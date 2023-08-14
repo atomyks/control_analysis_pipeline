@@ -1,6 +1,7 @@
 from system.delay_model import DelayModel
 from system.error_model_demo import ErrorModelDemo
 from system.base_model_linear import BaseLinearModel
+from system.base_model_feedforward import BaseFeedforwardModel
 import numpy as np
 import torch
 import torch.nn as nn
@@ -25,6 +26,7 @@ class SystemLearning:
         # system delay
         self.delay = DelayModel(batch_size=1, num_inputs=self.num_inputs)
         self.base_model = BaseLinearModel(num_inputs=self.num_inputs, num_outputs=self.num_states)
+        self.fd_model = BaseFeedforwardModel(num_inputs=self.num_inputs, num_outputs=self.num_states)
         self.error_model = ErrorModelDemo(num_inputs=self.num_inputs, num_outputs=self.num_states)
         self.inputs = None
         self.outputs = None
@@ -59,13 +61,13 @@ class SystemLearning:
         if sim_base_model:
             state_next = self.base_model(u_input, state_now)
         else:
-            state_now[0] = u_input
-            state_next = state_now
+            state_next = self.fd_model(u_input, state_now)
 
         if sim_error_model:
             error = self.error_model(u_input, state_now)
         else:
             error = 0.0
+
         state_next = state_next + error
         return state_next
 
