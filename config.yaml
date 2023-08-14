@@ -1,0 +1,60 @@
+# Example config file
+
+in_files_dir: "/home/tomas/tier4/control_analysis_pipeline/input_files"
+out_files_dir: "/home/tomas/tier4/control_analysis_pipeline/output_files"
+
+resampling_period: 0.03 # period that should be used when resampling the data
+minimum_signal_length: 10.0
+discard_after_enable: 2.0
+
+data_to_load:
+  steer_status:
+    topic: "/vehicle/status/actuation_status"
+    var: "status.steer_status"
+    type: "output"
+  steer_cmd:
+    topic: "/control/command/actuation_cmd"
+    var: "actuation.steer_cmd"
+    type: "input"
+  pacmode_enabled:
+    topic: "/pacmod/enabled"
+    var: "data"
+    type: "enable"
+  aw_enabled:
+    topic: "/control/vehicle_cmd_gate/operation_mode"
+    var: "is_autoware_control_enabled"
+    type: "enable"
+#  vel:
+#    topic: "/control/vehicle_cmd_gate/operation_mode"
+#    var: "is_autoware_control_enabled"
+#  acc:
+#    topic: "/control/vehicle_cmd_gate/operation_mode"
+#    var: "is_autoware_control_enabled"
+
+
+
+#acc:
+#  time_stamp:
+#    np.array([0...0])  # 1 X N
+#  data:
+#    np.array([0...0])  # M X N
+#
+#vel:
+#  time_stamp:
+#    np.array([0...0])  # 1 X N
+#  data:
+#    np.array([0...0])  # M X N
+#
+#
+#out:
+#  time_stamp:
+#    np.array([0...0])  # 1 X N
+#  data:
+#    np.array([0...0])  # 2 X N
+#  names:
+#    ['acc', "vel"]
+
+# Should not be used anymore
+valid_data_enabled:
+  - "aw_enabled"
+  - "pacmode_enabled"
