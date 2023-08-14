@@ -1,13 +1,13 @@
 import numpy as np
 
 import matplotlib.pyplot as plt
-from data_loader import extract_data, get_data_structure
-from data_preprocessing import sync_signal_sample_rates
+from data_preprocessing.data_loader import extract_data, get_data_structure
+from data_preprocessing.signal_synchronization import sync_signal_sample_rates
 from pathlib import Path
-from data_filtering import filer_signal_on_enabled
+from data_preprocessing.data_filtering import filer_signal_on_enabled
 
 
-class ControlAnalysisTool:
+class DataPreprocessor:
     def __init__(self):
         self.in_files_dir = None
         self.out_files_dir = None
@@ -124,6 +124,19 @@ class ControlAnalysisTool:
         ax.minorticks_on()
         plt.legend()
         plt.show()
+
+    def get_preprocessed_data(self):
+        data_all = {"header":
+            {
+                "sampling_period": self.resampling_period
+            },
+            "data": []}
+        for i in range(len(self.loaded_data)):
+            single_data = {}
+            for j, key in enumerate(list(self.loaded_data[i].keys())):
+                single_data[key] = self.loaded_data[i][key]["data"]
+            data_all["data"].append(single_data)
+        return data_all
 
     def plot_all_data(self, names_to_plot: list = None):
         for i in range(len(self.loaded_data)):
