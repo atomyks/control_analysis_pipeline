@@ -1,7 +1,9 @@
 import argparse
-from yaml import load, dump
-from yaml import Loader, Dumper
-from control_analysis_tool import ControlAnalysisTool
+from yaml import load
+from yaml import Loader
+from data_preprocessing.data_preprocessor import DataPreprocessor
+from system.system import SystemLearning
+import torch
 
 
 def main():
@@ -10,20 +12,89 @@ def main():
         "config", help="Path to a config file"
     )
     args = parser.parse_args()
-    control_analysis_tool = ControlAnalysisTool()
+    data_preprocessor = DataPreprocessor()
 
+    config = None
     with open(args.config, "r") as stream:
-        data = load(stream, Loader=Loader)
-        control_analysis_tool.parse_config(data)
+        config = load(stream, Loader=Loader)
+
+    data_preprocessor.parse_config(config)
 
     print(f"---------------Data loading start--------------")
-    control_analysis_tool.load_data()
+    data_preprocessor.load_data()
     print(f"---------------Data loading done---------------")
-    control_analysis_tool.sync_data()
-    control_analysis_tool.plot_all_data(["steer_status", "steer_cmd"])
-    control_analysis_tool.filter_data_on_enable()
-    control_analysis_tool.plot_all_data(["steer_status", "steer_cmd"])
-    control_analysis_tool.save_all_data(["steer_status", "steer_cmd"])
+    data_preprocessor.sync_data()
+    # data_preprocessor.plot_all_data(["steer_status", "steer_cmd"])
+    data_preprocessor.filter_data_on_enable()
+    # data_preprocessor.plot_all_data(["steer_status", "steer_cmd"])
+    # data_preprocessor.save_all_data(["steer_status", "steer_cmd"])
+
+    data = data_preprocessor.get_preprocessed_data()
+
+    sys = SystemLearning(data)
+    sys.parse_config(config)
+
+    sys.randomize_samples()
+    sys.split_data()
+
+    input_arr = torch.from_numpy(sys.loaded_data[0][sys.inputs[0]]).reshape(
+        (sys.loaded_data[0][sys.inputs[0]].shape[0], 1))
+    print(input_arr.shape)
+    sys.plot_simulation(input_array=input_arr,
+                        use_delay=True, use_base_model=False, use_error_model=False)
+
+    # u_init -> BATCH x history x inputs
+    # x_last -> BATCH x history x states
+
+    # u = torch.tensor([[[0.1], [0.1]], [[0.1], [0.1]]])
+    # x = torch.tensor([[[0.1], [0.1]], [[0.1], [0.1]]])
+    #
+    #
+    # # u = torch.tensor([[0.1], [0.1]])
+    # # x = torch.tensor([[0.1], [0.1]])
+    #
+    #
+    # print("********")
+    # print(u.shape)
+    # print(u.dim())
+    # print(x.shape)
+    #
+    # f = lambda u_input, x_last: torch.vstack([
+    #     u_input[..., 0, 0] + x_last[..., 0, 0],
+    #     u_input[..., 0, 0] + x_last[..., 0, 0] * 2.0,
+    #     u_input[..., 0, 0] + x_last[..., 0, 0] * 20.0,
+    # ])
+    #
+    # y = f(u_input=u, x_last=x)
+    #
+    # print(y.shape)
+    #
+    # print(y)
+
+    # sys.learn_base_model()
+    # sys.learn_error_model()
+
+    # from system.base_model_linear import BaseLinearModel
+    #
+    # base_model = BaseLinearModel()
+    #
+    # print(base_model)
+    # print(base_model.parameters())
+    #
+    # for param in base_model.parameters():
+    #     print(type(param), param.size())
+    #
+    # print("--------------------------------------------")
+    # from system.delay_model_sample import DelayModelSample
+    # print("Delay model")
+    # delay = DelayModelSample()
+    # print(delay)
+    #
+    # for param in delay.parameters():
+    #     print(type(param), param.size())
+    #
+    # print(delay.nongrad_params.keys())
+    # sys.learn_delay()
 
 
 if __name__ == "__main__":
