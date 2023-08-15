@@ -249,7 +249,10 @@ class SystemLearning:
                 print(f"Loss: {loss}")
                 loss.backward()
                 optimizer.step()
-
+        
+        print("Learning finished")
+        print("------")
+        
     def randomize_samples(self):
         self.loaded_data = np.random.permutation(self.loaded_data)
 

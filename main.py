@@ -41,17 +41,18 @@ def main():
     outputs_arr = sys.get_data_from_dict('output', 'training')
 
     # Train the model on the bags of data
-    sys.learn_grad(inputs=inputs_arr, true_outputs=outputs_arr, epochs=20, use_delay=False, use_base_model=True, use_error_model=False)
+    sys.learn_grad(inputs=inputs_arr, true_outputs=outputs_arr, epochs=100, use_delay=True, use_base_model=True, use_error_model=False)
 
-    input_arr = torch.from_numpy(sys.loaded_data[0][sys.inputs[0]]).reshape(
-        (sys.loaded_data[0][sys.inputs[0]].shape[0], 1))
-    output_arr = torch.from_numpy(sys.loaded_data[0][sys.outputs[0]]).reshape(
-        (sys.loaded_data[0][sys.outputs[0]].shape[0], 1))
+    bag_idx = 0
+    input_arr = torch.from_numpy(sys.loaded_data[bag_idx][sys.inputs[0]]).reshape(
+        (sys.loaded_data[bag_idx][sys.inputs[0]].shape[0], 1))
+    output_arr = torch.from_numpy(sys.loaded_data[bag_idx][sys.outputs[0]]).reshape(
+        (sys.loaded_data[bag_idx][sys.outputs[0]].shape[0], 1))
     
     print(input_arr.shape)
     sys.plot_simulation(input_array=input_arr,
                         true_state=output_arr,
-                        use_delay=False, use_base_model=True, use_error_model=False)
+                        use_delay=True, use_base_model=True, use_error_model=False)
 
     # u_init -> BATCH x history x inputs
     # x_last -> BATCH x history x states
