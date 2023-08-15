@@ -36,5 +36,5 @@ class DelayModel(nn.Module):
     def reset(self):
         self.input_queue = queue.Queue(maxsize=self.nongrad_params["delay"]["val"])
         for i in range(self.nongrad_params["delay"]["val"]):
-            u = torch.zeros((self.batch_size, self.num_inputs))
+            u = torch.zeros((self.batch_size, self.num_inputs), dtype=torch.float64)
             self.input_queue.put(u)
