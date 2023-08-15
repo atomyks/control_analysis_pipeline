@@ -1,10 +1,10 @@
 import numpy as np
 
 import matplotlib.pyplot as plt
-from data_preprocessing.data_loader import extract_data, get_data_structure
-from data_preprocessing.signal_synchronization import sync_signal_sample_rates
+from control_analysis_pipeline.data_preprocessing.data_loader import extract_data, get_data_structure
+from control_analysis_pipeline.data_preprocessing.signal_synchronization import sync_signal_sample_rates
 from pathlib import Path
-from data_preprocessing.data_filtering import filer_signal_on_enabled
+from control_analysis_pipeline.data_preprocessing.data_filtering import filer_signal_on_enabled
 
 
 class DataPreprocessor:

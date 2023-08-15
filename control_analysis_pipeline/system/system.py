@@ -1,12 +1,10 @@
-from system.delay_model import DelayModel
-from system.error_model_demo import ErrorModelDemo
-from system.base_model_linear import BaseLinearModel
-from system.base_model_feedforward import BaseFeedforwardModel
+from control_analysis_pipeline.system.delay_model import DelayModel
+from control_analysis_pipeline.system.error_model_demo import ErrorModelDemo
+from control_analysis_pipeline.system.base_model_linear import BaseLinearModel
+from control_analysis_pipeline.system.base_model_feedforward import BaseFeedforwardModel
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 import matplotlib.pyplot as plt
 
 
@@ -110,7 +108,7 @@ class SystemLearning:
                         use_delay=True, use_base_model=True, use_error_model=True):
         """
         :param input_array: torch.tensor, (TIME x NUM_INPUTS)
-        :param input_array: torch.tensor, (TIME x NUM_INPUTS)
+        :param initial_state: torch.tensor, (NUM_INPUTS)
         :param true_state: torch.tensor, (same dims as input_array)
         :param use_delay:
         :param use_base_model:
