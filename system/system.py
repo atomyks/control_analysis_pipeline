@@ -83,9 +83,9 @@ class SystemLearning:
         :return:
         """
 
-        if true_state.dim() == 3:
+        if input_array.dim() == 3:
             batch_size, time_length, _ = input_array.shape
-        elif true_state.dim() == 2:
+        elif input_array.dim() == 2:
             time_length, _ = input_array.shape
             batch_size = 1
         else:
@@ -95,7 +95,7 @@ class SystemLearning:
         if initial_state is not None:
             state = initial_state
         else:
-            state = torch.zeros((batch_size, self.num_states))
+            state = torch.zeros((batch_size, self.num_states), dtype=torch.float64)
         loss = 0
         state_array = torch.zeros((batch_size, time_length, self.num_states))  # BATCH x TIME x STATES
         for t in range(time_length):
@@ -110,25 +110,29 @@ class SystemLearning:
                         use_delay=True, use_base_model=True, use_error_model=True):
         """
         :param input_array: torch.tensor, (TIME x NUM_INPUTS)
-        :param input_array: torch.tensor, (TIME x NUM_INPUTS)
-        :param true_state: torch.tensor, (same dims as input_array)
+        :param initial_state: torch.tensor, (1 x NUM_STATES)
+        :param true_state: torch.tensor, (TIME x NUM_STATES)
         :param use_delay:
         :param use_base_model:
         :param use_error_model:
         :return:
         """
+        
+        state_array = None
+        with torch.no_grad():
+            # state_array (TIME x STATES)
+            state_array, _ = self.simulate(input_array, 
+                                        initial_state=initial_state,
+                                        use_delay=use_delay,
+                                        use_base_model=use_base_model,
+                                        use_error_model=use_error_model)
 
-        # state_array (TIME x STATES)
-        state_array, _ = self.simulate(input_array, initial_state,
-                                       use_delay=use_delay,
-                                       use_base_model=use_base_model,
-                                       use_error_model=use_error_model)
-
-        _, _, num_states = state_array.shape
+        state_array = state_array.numpy()
+        
         if true_state is None:
             num_observed_states = 0
         else:
-            _, _, num_observed_states = true_state.shape
+            _, num_observed_states = true_state.shape
         time_length, num_inputs = input_array.shape
 
         fig, ax = plt.subplots()
@@ -145,7 +149,7 @@ class SystemLearning:
             time_axis = np.arange(0.0, time_length * self.sampling_period, self.sampling_period)
             ax.plot(time_axis, true_state[:, i], '.', label=label)
 
-        for i in range(num_states):
+        for i in range(self.num_states):
             if i >= len(self.outputs):
                 label = f"State: x{i}"
             else:
@@ -156,6 +160,95 @@ class SystemLearning:
         ax.minorticks_on()
         plt.legend()
         plt.show()
+
+    def get_data_from_dict(self, data_type='input', data_use='training'):
+        """
+        This function converts data from dictionary and creates a list of torch tensors for easier training.
+        :param data_type:
+        :param data_use:
+        :return:
+        """
+        data_out = []
+        data_source = None
+        if data_use == "training":
+            data_source = self.training_data
+        if data_use == "testing":
+            data_source = self.testing_data
+        if data_type == 'input':
+            data_names = self.inputs
+        if data_type == 'output':
+            data_names = self.outputs
+        for i in range(len(data_source)):
+            single_data_out = None
+            for data_name in data_names:
+                new_element = torch.tensor(data_source[i][data_name]).reshape((-1, 1))
+                if single_data_out is None:
+                    single_data_out = new_element
+                else:
+                    single_data_out = torch.cat((single_data_out, new_element), dim=0)
+            data_out.append(single_data_out)
+        return data_out
+
+    # def learn_base_model(self):
+    #     inputs = self.get_input_data("training")
+    #     outputs = self.get_output_data("training")
+    #     self.learn_grad(self.base_model, inputs, outputs)
+
+    # def learn_error_model(self):
+    #     inputs = self.get_input_data("training")
+    #     outputs = self.get_output_data("training")
+    #     temp_data_ = []
+    #     with torch.no_grad():
+    #         for i in range(len(inputs)):
+    #             out, _ = self.simulate_subsystem(self.base_model, inputs[i].reshape((-1, 1)))
+    #             temp_data_.append(out)
+    #
+    #     self.learn_grad(self.error_model, temp_data_, outputs)
+
+    # def apply_delay(self):
+    #     self.start_time = self.delay()
+    # def learn_no_grad(self, subsystem):
+    #     pass
+
+    def learn_grad(self, inputs: torch.tensor, initial_state: torch.tensor = None, true_outputs: torch.tensor = None, 
+                   optimizer=None, epochs=100, use_delay=True, use_base_model=True, use_error_model=True):
+        NUM_SIGNALS = len(inputs)
+
+        params = []
+        if use_base_model:
+            self.base_model.train()
+            params += list(self.base_model.parameters())
+        else:
+            self.base_model.eval()
+
+        if use_error_model:
+            self.error_model.train()
+            params += list(self.error_model.parameters())
+        else:
+            self.error_model.eval()
+        
+        if len(params) == 0:
+            print("No parameters to optimize")
+            return
+        
+        if optimizer is None:
+            optimizer = optim.Adam(params, lr=0.01)
+        
+
+        # Create list of zero initial states for each bag of data of size 1 x num_states
+        if initial_state is None:
+            initial_state = torch.zeros((NUM_SIGNALS, self.num_states), dtype=torch.float64)
+            
+        print("Learning started")
+    
+        for _ in range(epochs):
+            print("------")
+            for i in range(NUM_SIGNALS):
+                optimizer.zero_grad()
+                _, loss = self.simulate(inputs[i], initial_state[i], true_outputs[i], use_delay, use_base_model, use_error_model)
+                print(f"Loss: {loss}")
+                loss.backward()
+                optimizer.step()
 
     def randomize_samples(self):
         self.loaded_data = np.random.permutation(self.loaded_data)
