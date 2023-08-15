@@ -40,13 +40,7 @@ class RegressorFactory(nn.Module):
         self.action_history.add(u_now)
         self.state_history.add(y_prev)
 
-        print("sdjklfhsdjklfnsfkln")
-        print(self.action_history.data.shape)
-        print(self.action_history.data)
         history_a = self.action_history.get()
-        print(history_a.shape)
-        print(history_a)
-
         history_s = self.state_history.get()
 
         # compute regressor vector
@@ -58,17 +52,14 @@ class RegressorFactory(nn.Module):
             fun, a_defs, s_defs = regressor
             for j, a_ in enumerate(a_defs):
                 history_idx, action_idx = a_
-                print("Shape: ")
-                print(history_a.shape)
-                print(history_a[..., history_idx - 1, action_idx].shape)
-                in_a.append(history_a[..., history_idx - 1, action_idx].reshape((self.batch_size, self.num_actions)))
+                in_a.append(history_a[..., history_idx - 1, action_idx].reshape((self.batch_size, 1)))
 
             for j, s_ in enumerate(regressor[2]):
                 history_idx, state_idx = s_
-                in_s.append(history_a[..., history_idx[0] - 1, state_idx].reshape((self.batch_size, self.num_states)))
+                in_s.append(history_s[..., history_idx[0] - 1, state_idx].reshape((self.batch_size, 1)))
             regressor_vector.append(fun(in_a, in_s))
 
-        return torch.cat(regressor_vector)
+        return torch.cat(regressor_vector, dim=1)
 
     def reset_regressor_library(self):
         self.regressor_library = []
@@ -162,47 +153,41 @@ class RegressorFactory(nn.Module):
 
 
 if __name__ == "__main__":
+    batch_size = 3
+    num_actions = 2
+    num_states = 2
+    action_history_size = 4
+    state_history_size = 4
+
     reg = RegressorFactory(
-        batch_size=1,
-        num_actions=1,
-        num_states=1,
-        action_history_size=2,
-        state_history_size=2
+        batch_size=batch_size,
+        num_actions=num_actions,
+        num_states=num_states,
+        action_history_size=action_history_size,
+        state_history_size=state_history_size
     )
 
-    print(reg.state_history.data)
-    print(reg.state_history.data.shape)
-    print(reg.action_history.data)
-    print(reg.action_history.data.shape)
-
-    reg.set_history(action_history=torch.tensor([[[2.], [3.]]]),
-                    state_history=torch.tensor([[[1.], [2.]]])
+    reg.set_history(action_history=torch.rand((batch_size, action_history_size, num_actions)),
+                    state_history=torch.rand((batch_size, state_history_size, num_states))
                     )
-
-    print(reg.state_history.data)
-    print(reg.state_history.data.shape)
-    print(reg.action_history.data)
-    print(reg.action_history.data.shape)
 
     # a - action (BATCH x HISTORY x num_actions)
     # s - state (BATCH x HISTORY x num_states)
 
     # (0, 0) defines that a[0] is action number 0 and history element k (most recent one).
-    a_def = [(0, 0)]
+    a_def = [(-2, 0)]
     f = lambda a, s: torch.pow(a[0], 2.0)
     reg.add(f, a_def)
+    a_def = [(-2, 1)]
     f = lambda a, s: torch.pow(a[0], 3.0)
     reg.add(f, a_def)
 
+
     print(reg)
 
-    print("76789-----------")
-    print(reg.state_history.data)
-    print(reg.action_history.data)
+    regressor_vector = reg(torch.rand((batch_size, num_actions)),
+                           torch.rand((batch_size, num_states)))
 
-    regressor_vector = reg(torch.tensor([2.0]), torch.tensor([1.0]))
-    print()
+    print(torch.pow(reg.action_history.get()[:, -3, 0], 2.0))
+    print(torch.pow(reg.action_history.get()[:, -3, 1], 3.0))
     print(regressor_vector)
-    print()
-    print(reg.state_history.data)
-    print(reg.action_history.data)
