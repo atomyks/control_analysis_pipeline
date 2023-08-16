@@ -24,3 +24,7 @@ class BaseLinearModel(nn.Module):
         # x[k+1] = Ax[k] + Bu[k]
         y_now = self.A(y_prev) + self.B(u_now)
         return y_now
+    
+    def set_model_matrices(self, A, B):
+        self.A.weight = nn.parameter.Parameter(A)
+        self.B.weight = nn.parameter.Parameter(B)
