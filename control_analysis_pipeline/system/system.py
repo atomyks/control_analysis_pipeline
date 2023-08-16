@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 class System:
-    def __init__(self, loaded_data : dict = None, batch_size : int = 1, num_states : int = 1, num_inputs : int = 1):
+    def __init__(self, loaded_data : dict = None, batch_size : int = 1, num_states : int = 1, num_inputs : int = 1, sampling_period : float = 0.01):
         if loaded_data is not None:
             self.loaded_data = loaded_data["data"]
         else:
@@ -21,7 +21,11 @@ class System:
         self.num_states = num_states
         self.num_inputs = num_inputs
 
-        self.sampling_period = loaded_data["header"]["sampling_period"]
+        if loaded_data is not None:
+            self.sampling_period = loaded_data["header"]["sampling_period"]
+        else:
+            self.sampling_period = sampling_period
+            
         self.output_data = None
 
         # system delay
