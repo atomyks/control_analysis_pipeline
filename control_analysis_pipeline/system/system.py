@@ -1,7 +1,7 @@
-from control_analysis_pipeline.system.delay_model import DelayModel
-from control_analysis_pipeline.system.error_model_demo import ErrorModelDemo
-from control_analysis_pipeline.system.base_model_linear import BaseLinearModel
-from control_analysis_pipeline.system.base_model_feedforward import BaseFeedforwardModel
+from control_analysis_pipeline.models.delay_models.delay_model import DelayModel
+from control_analysis_pipeline.models.error_models.error_model_demo import ErrorModelDemo
+from control_analysis_pipeline.models.base_models.base_model_linear import BaseLinearModel
+from control_analysis_pipeline.models.base_models.base_model_feedforward import BaseFeedforwardModel
 import numpy as np
 import torch
 import torch.nn as nn
