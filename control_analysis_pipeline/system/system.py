@@ -22,7 +22,7 @@ class SystemLearning:
         self.output_data = None
 
         # system delay
-        self.delay = DelayModel(batch_size=1, num_inputs=self.num_inputs)
+        self.delay_model = DelayModel(batch_size=1, num_inputs=self.num_inputs)
         self.base_model = BaseLinearModel(num_inputs=self.num_inputs, num_outputs=self.num_states)
         self.fd_model = BaseFeedforwardModel(num_inputs=self.num_inputs, num_outputs=self.num_states)
         self.error_model = ErrorModelDemo(num_inputs=self.num_inputs, num_outputs=self.num_states)
@@ -54,7 +54,7 @@ class SystemLearning:
     def system_step(self, u_input: torch.tensor, state_now: torch.tensor,
                     sim_delay=True, sim_base_model=True, sim_error_model=True) -> (torch.tensor, torch.tensor):
         if sim_delay:
-            u_input = self.delay(u_input)
+            u_input = self.delay_model(u_input)
 
         if sim_base_model:
             state_next = self.base_model(u_input, state_now)
@@ -74,7 +74,7 @@ class SystemLearning:
         """
         :param input_array: torch.tensor, (BATCH x TIME x NUM_INPUTS) or (TIME x NUM_INPUTS)
         :param initial_state: torch.tensor, (BATCH x NUM_INPUTS)
-        :param true_state: torch.tensor, (same dims as input_array)
+        :param true_state: torch.tensor, (BATCH x TIME x NUM_TRUE_STATES)
         :param use_delay:
         :param use_base_model:
         :param use_error_model:
@@ -85,10 +85,12 @@ class SystemLearning:
             batch_size, time_length, _ = input_array.shape
         elif input_array.dim() == 2:
             time_length, _ = input_array.shape
+            # Reshape input to have a batch dimension of 1
+            input_array = input_array.unsqueeze(0)
             batch_size = 1
         else:
-            # raise
-            return None
+            raise ValueError("Input array must be of shape (BATCH x TIME x NUM_INPUTS) or (TIME x NUM_INPUTS)")
+
 
         if initial_state is not None:
             state = initial_state
@@ -100,7 +102,18 @@ class SystemLearning:
             state = self.system_step(input_array[..., t, :], state, use_delay, use_base_model, use_error_model)
             state_array[..., t, :] = state
             if true_state is not None:
-                loss += self.loss_fn(state, true_state[t])
+                # if we have more states than the true state, then we only want to compare the first N states
+                num_lossy_states = true_state.shape[-1]
+                # if we are modelling with fewer states than the true state, then we only want to compare the first num_states
+                if num_lossy_states > self.num_states:
+                    num_lossy_states = self.num_states
+
+                # reshape true_state to have a batch dimension of 1 if it doesn't already
+                if true_state.dim() == 2:
+                    loss += self.loss_fn(state[..., :num_lossy_states], true_state.unsqueeze(0)[..., t, :num_lossy_states])
+                else:
+                    loss += self.loss_fn(state[..., :num_lossy_states], true_state[..., t, :num_lossy_states])
+
         return state_array, loss
 
     def plot_simulation(self, input_array: torch.tensor, initial_state: torch.tensor = None,
