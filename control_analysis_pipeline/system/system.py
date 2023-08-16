@@ -126,6 +126,7 @@ class System:
 
     def plot_simulation(self, input_array: torch.tensor, initial_state: torch.tensor = None,
                         true_state: torch.tensor = None,
+                        ax : plt.Axes = None,
                         use_delay=True, use_base_model=True, use_error_model=True):
         """
         :param input_array: torch.tensor, (TIME x NUM_INPUTS)
@@ -154,18 +155,19 @@ class System:
             _, num_observed_states = true_state.shape
         time_length, num_inputs = input_array.shape
 
-        fig, ax = plt.subplots()
+        if ax is None:
+            fig, ax = plt.subplots()
         for i in range(num_inputs):
             label = f"Input: {self.inputs[i]}"
-            time_axis = np.arange(0.0, time_length * self.sampling_period, self.sampling_period)
-            ax.plot(time_axis, input_array[:, i], '.', label=label)
+            time_axis = np.arange(0, time_length, 1) * self.sampling_period
+            ax.plot(time_axis, input_array[:, i], drawstyle='steps-pre', label=label)
 
         for i in range(num_observed_states):
             if i >= len(self.outputs):
                 label = f"Observed state: x{i}"
             else:
                 label = f"Observed state: {self.outputs[i]}"
-            time_axis = np.arange(0.0, time_length * self.sampling_period, self.sampling_period)
+            time_axis = np.arange(0, time_length, 1) * self.sampling_period
             ax.plot(time_axis, true_state[:, i], '.', label=label)
 
         for i in range(self.num_states):
@@ -173,12 +175,10 @@ class System:
                 label = f"State: x{i}"
             else:
                 label = f"State: {self.outputs[i]}"
-            time_axis = np.arange(0.0, time_length * self.sampling_period, self.sampling_period)
+            time_axis = np.arange(0, time_length, 1) * self.sampling_period
             ax.plot(time_axis, state_array[0, :, i], '.', label=label)
         ax.grid(which="both")
         ax.minorticks_on()
-        plt.legend()
-        plt.show()
 
         return state_array
 
