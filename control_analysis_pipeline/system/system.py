@@ -95,8 +95,6 @@ class System:
             batch_size, time_length, _ = input_array.shape
         elif input_array.dim() == 2:
             time_length, _ = input_array.shape
-            # Reshape input to have a batch dimension of 1
-            input_array = input_array.unsqueeze(0)
             batch_size = 1
         else:
             raise ValueError("Input array must be of shape (BATCH x TIME x NUM_INPUTS) or (TIME x NUM_INPUTS)")
@@ -107,9 +105,9 @@ class System:
         else:
             state = torch.zeros((batch_size, self.num_states), dtype=torch.float64)
         loss = 0
-        state_array = torch.zeros((batch_size, time_length, self.num_states))  # BATCH x TIME x STATES
+        state_array = torch.zeros((batch_size, time_length, self.num_states), dtype=torch.float64)  # BATCH x TIME x STATES
         for t in range(time_length):
-            state = self.system_step(input_array[..., t, :], state, use_delay, use_base_model, use_error_model)
+            state = self.system_step(input_array.unsqueeze(0)[..., t, :], state, use_delay, use_base_model, use_error_model)
             state_array[..., t, :] = state
             if true_state is not None:
                 # if we have more states than the true state, then we only want to compare the first N states
