@@ -2,7 +2,7 @@ import argparse
 from yaml import load
 from yaml import Loader
 from control_analysis_pipeline.data_preprocessing.data_preprocessor import DataPreprocessor
-from control_analysis_pipeline.system import SystemLearning
+from control_analysis_pipeline.system.system import SystemLearning
 import torch
 
 
