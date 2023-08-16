@@ -8,14 +8,17 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 
 
-class SystemLearning:
-    def __init__(self, loaded_data):
-        self.loaded_data = loaded_data["data"]
+class System:
+    def __init__(self, loaded_data=None):
+        if loaded_data is not None:
+            self.loaded_data = loaded_data["data"]
+        else:
+            self.loaded_data = None
+
         self.training_data = None
         self.testing_data = None
-        self.split_training = 0.8
         self.batch_size = 1
-        self.num_states = 3
+        self.num_states = 1
         self.num_inputs = 1
 
         self.sampling_period = loaded_data["header"]["sampling_period"]
@@ -172,6 +175,8 @@ class SystemLearning:
         plt.legend()
         plt.show()
 
+        return state_array
+
     def get_data_from_dict(self, data_type='input', data_use='training'):
         """
         This function converts data from dictionary and creates a list of torch tensors for easier training.
@@ -221,8 +226,15 @@ class SystemLearning:
     # def learn_no_grad(self, subsystem):
     #     pass
 
-    def learn_grad(self, inputs: torch.tensor, initial_state: torch.tensor = None, true_outputs: torch.tensor = None, 
+    def learn_grad(self, inputs: torch.tensor, true_outputs: torch.tensor, initial_state: torch.tensor = None, 
                    optimizer=None, epochs=100, use_delay=True, use_base_model=True, use_error_model=True):
+        
+        # Check if data is provided, raise error if not
+        if true_outputs is None:
+            raise ValueError("No true outputs provided")
+        if inputs is None:
+            raise ValueError("No inputs provided")
+
         NUM_SIGNALS = len(inputs)
 
         params = []
@@ -267,14 +279,17 @@ class SystemLearning:
     def randomize_samples(self):
         self.loaded_data = np.random.permutation(self.loaded_data)
 
-    def split_data(self):
+    def split_data(self, split_training=0.8):
+        if(self.loaded_data is None):
+            raise Exception("No data to split")
+        
         self.training_data = []
         self.testing_data = []
 
         data_num = len(self.loaded_data)
 
         for i in range(data_num):
-            if i / data_num < self.split_training:
+            if i / data_num < split_training:
                 self.training_data.append(self.loaded_data[i])
             else:
                 self.testing_data.append(self.loaded_data[i])
