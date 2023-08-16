@@ -17,10 +17,10 @@ def dlqr(A,B,Q,R):
     #ref Bertsekas, p.151 - http://www.mwm.im/lqr-controllers-with-python/
     
     #first, try to solve the ricatti equation
-    X = np.matrix(scipy.linalg.solve_discrete_are(A, B, Q, R))
+    P = np.matrix(scipy.linalg.solve_discrete_are(A, B, Q, R))
     
     #compute the LQR gain
-    K = np.matrix(scipy.linalg.inv(B.T*X*B+R)*(B.T*X*A))
+    K = np.matrix(scipy.linalg.inv(B.T*P*B+R)*(B.T*P*A))
     
     eigVals, eigVecs = scipy.linalg.eig(A-B*K)
     
