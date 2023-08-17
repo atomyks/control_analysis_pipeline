@@ -46,6 +46,7 @@ def main():
     initial_states = []
     
     learn_with_controller = False
+    with_noise = False
     Q = np.eye(2)
     R = np.eye(1)
     K, X, eigVals = dlqr(sys.base_model.A.weight.detach().numpy(),
@@ -78,9 +79,15 @@ def main():
             # Simulate the system
             x = sys.base_model.A.weight.detach().numpy() @ x + sys.base_model.B.weight.detach().numpy() @ u
             
+            if with_noise:
+                # Add noise to the state
+                xobs = x + 0.1 * np.random.randn(2, 1)
+            else:
+                xobs = x
+
             # Append the state and input to the input and output arrays
             input_tensor = torch.cat((input_tensor, torch.from_numpy(u).reshape((1, 1))), dim=0)
-            output_tensor = torch.cat((output_tensor, torch.from_numpy(x.T).reshape((1, 2))), dim=0)
+            output_tensor = torch.cat((output_tensor, torch.from_numpy(xobs.T).reshape((1, 2))), dim=0)
         
         inputs_arr.append(input_tensor.detach())
         outputs_arr.append(output_tensor.detach())
