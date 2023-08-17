@@ -35,8 +35,8 @@ def main():
     sys.parse_config(config)
 
     # Double integrator system
-    sys.set_linear_model_matrices(A=torch.tensor([[1, 1], [0, 1]], dtype=torch.float64),
-                                  B=torch.tensor([[0], [1]], dtype=torch.float64))
+    sys.set_linear_model_matrices(A=torch.tensor([[0, 0.5], [-0.5, 0]], dtype=torch.float64),
+                                  B=torch.tensor([[0], [0.1]], dtype=torch.float64))
 
     # Simulate the system closed loop with LQR controller (no delay)
     # Simulation ends when the state is within 1e-15 of the origin
@@ -45,15 +45,21 @@ def main():
     outputs_arr = []
     initial_states = []
     
+    learn_with_controller = False
     Q = np.eye(2)
     R = np.eye(1)
     K, X, eigVals = dlqr(sys.base_model.A.weight.detach().numpy(),
                          sys.base_model.B.weight.detach().numpy(),
                          Q, R)
-    for _ in range(100):
+    simulation_horizon = 10
+    for i in range(100):
         x_init = 15 * np.random.rand(2, 1) - 7.5
         x = x_init
-        u = -K @ x
+        if learn_with_controller:
+            u = -K @ x
+        else:
+            # oscillating input to excite the system
+            u = np.array([[-1.0 * np.sin(0.1 * i)]])
 
         # Append the initial state to the initial states array
         initial_states.append(torch.from_numpy(x_init.T).reshape((1, 2)))
@@ -62,8 +68,13 @@ def main():
         output_tensor = torch.empty((0, 2), dtype=torch.float64)
         input_tensor = torch.empty((0, 1), dtype=torch.float64)
         
-        while np.linalg.norm(x) > 1e-1:
-            u = -K @ x
+        for _ in range(simulation_horizon):
+            if learn_with_controller:
+                u = -K @ x
+            else:
+                u = np.zeros((1, 1))
+
+            # Simulate the system
             x = sys.base_model.A.weight.detach().numpy() @ x + sys.base_model.B.weight.detach().numpy() @ u
             
             # Append the state and input to the input and output arrays
