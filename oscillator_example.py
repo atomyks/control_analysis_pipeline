@@ -122,13 +122,13 @@ def main():
     
     learned_sys.parse_config(config)
     
+    # # Set only B-matrix to the true model matrices
+    # learned_sys.set_linear_model_matrices(A=None,B=torch.zeros_like(sys.base_model.B.weight.detach()))
+
     # # Freeze the B-matrix of the learned model
     # for param in learned_sys.base_model.B.parameters():
     #     param.requires_grad = False
     
-    # # Set only B-matrix to the true model matrices
-    # learned_sys.set_linear_model_matrices(A=None,B=sys.base_model.B.weight.detach())
-
     tick = time.time()
     learned_sys.learn_grad(inputs=inputs_arr,
                            true_outputs=outputs_arr,
