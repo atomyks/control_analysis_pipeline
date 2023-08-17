@@ -50,13 +50,14 @@ class RegressorFactory(nn.Module):
             in_s = []
             in_a = []
             fun, a_defs, s_defs = regressor
-            for j, a_ in enumerate(a_defs):
-                history_idx, action_idx = a_
-                in_a.append(history_a[..., history_idx - 1, action_idx].reshape((self.batch_size, 1)))
-
-            for j, s_ in enumerate(regressor[2]):
-                history_idx, state_idx = s_
-                in_s.append(history_s[..., history_idx[0] - 1, state_idx].reshape((self.batch_size, 1)))
+            if a_defs is not None:
+                for j, a_ in enumerate(a_defs):
+                    history_idx, action_idx = a_
+                    in_a.append(history_a[..., history_idx - 1, action_idx].reshape((self.batch_size, 1)))
+            if s_defs is not None:
+                for j, s_ in enumerate(regressor[2]):
+                    history_idx, state_idx = s_
+                    in_s.append(history_s[..., history_idx - 1, state_idx].reshape((self.batch_size, 1)))
             regressor_vector.append(fun(in_a, in_s))
 
         return torch.cat(regressor_vector, dim=1)
