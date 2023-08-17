@@ -72,7 +72,8 @@ def main():
             if learn_with_controller:
                 u = -K @ x
             else:
-                u = np.zeros((1, 1))
+                # oscillating input to excite the system
+                u = np.array([[-1.0 * np.sin(0.1 * i)]])
 
             # Simulate the system
             x = sys.base_model.A.weight.detach().numpy() @ x + sys.base_model.B.weight.detach().numpy() @ u
@@ -94,6 +95,16 @@ def main():
     plt.title('Simulated trajectories')
     plt.show()
 
+    # Plot the distribution of control inputs
+    plt.figure()
+    for i in range(len(inputs_arr)):
+        # use matplotlib to plot x-y trajectories
+        plt.plot(inputs_arr[i][:, 0])
+    plt.xlabel('Time')
+    plt.ylabel('Control input')
+    plt.title('Control inputs')
+    plt.show()
+
     # Create another system object to learn the model
     learned_sys = System(num_inputs=1, num_states=2)
 
@@ -103,6 +114,13 @@ def main():
     
     learned_sys.parse_config(config)
     
+    # # Freeze the B-matrix of the learned model
+    # for param in learned_sys.base_model.B.parameters():
+    #     param.requires_grad = False
+    
+    # # Set only B-matrix to the true model matrices
+    # learned_sys.set_linear_model_matrices(A=None,B=sys.base_model.B.weight.detach())
+
     learned_sys.learn_grad(inputs=inputs_arr,
                            true_outputs=outputs_arr,
                            initial_state=initial_states,
