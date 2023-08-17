@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 class System:
-    def __init__(self, loaded_data : dict = None, batch_size : int = 1, num_states : int = 1, num_inputs : int = 1, sampling_period : float = 0.01):
+    def __init__(self, loaded_data : dict = None, num_states : int = 1, num_inputs : int = 1, sampling_period : float = 0.01):
         if loaded_data is not None:
             self.loaded_data = loaded_data["data"]
         else:
@@ -17,7 +17,6 @@ class System:
 
         self.training_data = None
         self.testing_data = None
-        self.batch_size = batch_size
         self.num_states = num_states
         self.num_inputs = num_inputs
 
@@ -240,6 +239,36 @@ class System:
         if inputs is None:
             raise ValueError("No inputs provided")
 
+        # Check that all lists are of the same length
+        if len(inputs) != len(true_outputs):
+            raise ValueError("Input and output lists must be of the same length")
+        if initial_state is not None:
+            if len(inputs) != len(initial_state):
+                raise ValueError("Input and initial state lists must be of the same length")
+            
+        # Within each bag of data, the inputs and outputs must be of the same length or one shorter
+        is_equal_length = False
+        is_one_shorter = False
+        for i in range(len(inputs)):
+            # Check if using equal length or one shorter and consistent in all bags
+            if inputs[i].shape[0] == true_outputs[i].shape[0]:
+                if is_one_shorter:
+                    raise ValueError("Inconsistent data length. Expected inputs to be one shorter than outputs, but found equal length at bag " + str(i))
+                is_equal_length = True
+            elif inputs[i].shape[0] == true_outputs[i].shape[0] - 1:
+                if is_equal_length:
+                    raise ValueError("Inconsistent data length. Expected inputs to be of equal length to outputs, but found one shorter at bag " + str(i))
+                is_one_shorter = True
+            else:
+                raise ValueError("Inputs and outputs must be of the same length or one shorter. Data bag " + str(i) + " failed this requirement")
+            
+            # Check if initial state is provided, if so, check that it is only one state
+            if initial_state is not None:
+                if initial_state[i].shape[0] != 1:
+                    raise ValueError("Initial state must be a single state")
+                if initial_state[i].shape[1] != self.num_states:
+                    raise ValueError("Initial state must be of the same size as the number of states")
+                    
         NUM_SIGNALS = len(inputs)
 
         params = []
@@ -263,9 +292,15 @@ class System:
             optimizer = torch.optim.SGD(params, lr=0.01)
         
 
-        # Create list of zero initial states for each bag of data of size 1 x num_states
+        # Create list of initial states for each bag of data of size 1 x num_states
         if initial_state is None:
-            initial_state = torch.zeros((NUM_SIGNALS, self.num_states), dtype=torch.float64)
+            # Construct initial state by concatenating all initial states
+            initial_state =  [true_output[0].reshape((1, -1)) for true_output in true_outputs]
+            # Then remove the first element from each true output
+            true_outputs = [true_output[1:] for true_output in true_outputs]
+            # Only fix inputs if they are of equal length to outputs
+            if is_equal_length:
+                inputs = [input_[1:] for input_ in inputs]
             
         print("Learning started")
     
