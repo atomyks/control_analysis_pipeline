@@ -6,6 +6,7 @@ import scipy.linalg
 import matplotlib.pyplot as plt
 from yaml import load
 from yaml import Loader
+import time
 
 def dlqr(A,B,Q,R):
     """Solve the discrete time lqr controller.
@@ -128,10 +129,14 @@ def main():
     # # Set only B-matrix to the true model matrices
     # learned_sys.set_linear_model_matrices(A=None,B=sys.base_model.B.weight.detach())
 
+    tick = time.time()
     learned_sys.learn_grad(inputs=inputs_arr,
                            true_outputs=outputs_arr,
                            initial_state=initial_states,
+                           batch_size=10,
                            epochs=100, use_delay=False, use_base_model=True, use_error_model=False)
+    tock = time.time()
+    print('Time taken to learn the model: ', tock - tick)
 
     # Compare the learned model with the true model
     print('True A: ', sys.base_model.A.weight)
@@ -153,7 +158,9 @@ def main():
                                     initial_state=initial_state,
                                     ax=ax,
                                     use_delay=False, use_base_model=True, use_error_model=False)
-    plt.legend()
+    # top right legend
+    handles, labels = ax.get_legend_handles_labels()
+    fig.legend(handles, labels, loc='upper right')
     plt.show()
 
     # Compare the learned model with the true model closed loop with LQR controller (no delay)
@@ -212,12 +219,13 @@ def main():
 
     # Plot all the simulated trajectories
     plt.figure()
-    markers = ['x', '+']
+    markers = ['o', '.']
+    colors = ['b', 'r']
     for i in range(len(inputs_arr)):
         # use matplotlib to plot x-y trajectories
-        plt.plot(outputs_arr[i][:, 0], outputs_arr[i][:, 1], marker=markers[i])
+        plt.plot(outputs_arr[i][:, 0], outputs_arr[i][:, 1], marker=markers[i], markersize=10, color=colors[i])
         # Add a circle at the initial state
-        plt.plot(initial_states[i][:, 0], initial_states[i][:, 1], marker=markers[i], markersize=10)
+        plt.plot(initial_states[i][:, 0], initial_states[i][:, 1], marker=markers[i], markersize=10, color=colors[i])
     plt.xlabel('x')
     plt.ylabel('y')
     plt.title('Simulated trajectories')

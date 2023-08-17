@@ -106,8 +106,9 @@ class System:
         loss = 0
         state_array = torch.zeros((batch_size, time_length, self.num_states), dtype=torch.float64)  # BATCH x TIME x STATES
         for t in range(time_length):
-            state = self.system_step(input_array.unsqueeze(0)[..., t, :], state, use_delay, use_base_model, use_error_model)
-            state_array[..., t, :] = state
+            # One-slice t:t+1 allows us to use the same code for batched and unbatched data while preserving correct dimensions
+            state = self.system_step(input_array[..., t:t+1, :], state, use_delay, use_base_model, use_error_model)
+            state_array[..., t:t+1, :] = state
             if true_state is not None:
                 # if we have more states than the true state, then we only want to compare the first N states
                 num_lossy_states = true_state.shape[-1]
@@ -115,11 +116,9 @@ class System:
                 if num_lossy_states > self.num_states:
                     num_lossy_states = self.num_states
 
-                # reshape true_state to have a batch dimension of 1 if it doesn't already
-                if true_state.dim() == 2:
-                    loss += self.loss_fn(state[..., :num_lossy_states], true_state.unsqueeze(0)[..., t, :num_lossy_states])
-                else:
-                    loss += self.loss_fn(state[..., :num_lossy_states], true_state[..., t, :num_lossy_states])
+                # One-slice t:t+1 allows us to use the same code for batched and unbatched data while preserving correct dimensions
+                loss += self.loss_fn(state[..., :num_lossy_states], true_state[..., t:t+1, :num_lossy_states])
+                    
 
         return state_array, loss
 
@@ -167,7 +166,7 @@ class System:
             else:
                 label = f"Observed state: {self.outputs[i]}"
             time_axis = np.arange(0, time_length, 1) * self.sampling_period
-            ax.plot(time_axis, true_state[:, i], '.', label=label)
+            ax.plot(time_axis, true_state[:, i], marker='o', label=label, markersize=10)
 
         for i in range(self.num_states):
             if i >= len(self.outputs):
@@ -175,7 +174,7 @@ class System:
             else:
                 label = f"State: {self.outputs[i]}"
             time_axis = np.arange(0, time_length, 1) * self.sampling_period
-            ax.plot(time_axis, state_array[0, :, i], '.', label=label)
+            ax.plot(time_axis, state_array[0, :, i], marker='.', label=label, markersize=10)
         ax.grid(which="both")
         ax.minorticks_on()
 
@@ -231,6 +230,7 @@ class System:
     #     pass
 
     def learn_grad(self, inputs: torch.tensor, true_outputs: torch.tensor, initial_state: torch.tensor = None, 
+                   batch_size=None,
                    optimizer=None, stop_threshold=1e-15, epochs=100, use_delay=True, use_base_model=True, use_error_model=True):
         
         # Check if data is provided, raise error if not
@@ -269,8 +269,6 @@ class System:
                 if initial_state[i].shape[1] != self.num_states:
                     raise ValueError("Initial state must be of the same size as the number of states")
                     
-        NUM_SIGNALS = len(inputs)
-
         params = []
         if use_base_model:
             self.base_model.train()
@@ -304,12 +302,37 @@ class System:
             
         print("Learning started")
     
+        NUM_SIGNALS = len(inputs)
+        batched_inputs = []
+        batched_true_outputs = []
+        batched_initial_state = []
+        if batch_size is not None:
+            if batch_size > NUM_SIGNALS:
+                raise ValueError("Batch size must be smaller than number of signals")
+            # If batch size is provided, create a list of batches
+            for i in range(0, NUM_SIGNALS, batch_size):
+                # Get shortest length of all bags of data
+                shortest_length = min([input_.shape[0] for input_ in inputs[i:i+batch_size]])
+                # Create list of batches of inputs and outputs
+                inputs_batch = [input_[:shortest_length] for input_ in inputs[i:i+batch_size]]
+                true_outputs_batch = [true_output[:shortest_length] for true_output in true_outputs[i:i+batch_size]]
+                initial_state_batch = initial_state[i:i+batch_size]
+                # Concatenate all batches into a single tensor
+                batched_inputs.append(torch.stack(inputs_batch))
+                batched_true_outputs.append(torch.stack(true_outputs_batch))
+                batched_initial_state.append(torch.stack(initial_state_batch))
+        else:
+            # If no batch size is provided, use original data
+            batched_inputs = inputs
+            batched_true_outputs = true_outputs
+            batched_initial_state = initial_state
+            
         for _ in range(epochs):
             print("------")
             loss_above_threshold = False
-            for i in range(NUM_SIGNALS):
+            for i in range(len(batched_inputs)):
                 optimizer.zero_grad()
-                _, loss = self.simulate(inputs[i], initial_state[i], true_outputs[i], use_delay, use_base_model, use_error_model)
+                _, loss = self.simulate(batched_inputs[i], batched_initial_state[i], batched_true_outputs[i], use_delay, use_base_model, use_error_model)
                 if loss > stop_threshold:
                     loss_above_threshold = True
                 print(f"Loss: {loss}")
