@@ -24,7 +24,7 @@ def dlqr(A,B,Q,R):
     
     eigVals, eigVecs = scipy.linalg.eig(A-B*K)
     
-    return K, X, eigVals
+    return K, P, eigVals
 
 def main():
     config = None
@@ -118,6 +118,73 @@ def main():
                                     ax=ax,
                                     use_delay=False, use_base_model=True, use_error_model=False)
     plt.legend()
+    plt.show()
+
+    # Compare the learned model with the true model closed loop with LQR controller (no delay)
+    # Simulation ends when the state is within 1e-15 of the origin
+    # Simulation is done using x = Ax + Bu and not model.forward()
+    inputs_arr = []
+    outputs_arr = []
+    initial_states = []
+    
+    Q = np.eye(2)
+    R = np.eye(1)
+    Kbase, _, _ = dlqr(sys.base_model.A.weight.detach().numpy(),
+                         sys.base_model.B.weight.detach().numpy(),
+                         Q, R)
+    Klearned, _, _ = dlqr(learned_sys.base_model.A.weight.detach().numpy(),
+                          learned_sys.base_model.B.weight.detach().numpy(),
+                          Q, R)
+    for _ in range(1):
+        x_init = 15 * np.random.rand(2, 1) - 7.5
+        xbase = x_init.copy()
+        xlearned = x_init.copy()
+        ubase = -Kbase @ x
+        ulearned = -Klearned @ x
+        
+        # Append the initial state twice to the initial states array
+        initial_states.append(torch.from_numpy(x_init.T).reshape((1, 2)))
+        initial_states.append(torch.from_numpy(x_init.T).reshape((1, 2)))
+
+        # Initialize output and input tensors for the simulation as empty tensors
+        output_tensor = torch.from_numpy(x_init.T).reshape((1, 2))
+        input_tensor = torch.empty((0, 1), dtype=torch.float64)
+
+        while np.linalg.norm(xbase) > 1e-1:
+            ubase = -Kbase @ xbase
+            xbase = sys.base_model.A.weight.detach().numpy() @ xbase + sys.base_model.B.weight.detach().numpy() @ ubase
+
+            # Append the state and input to the input and output arrays
+            input_tensor = torch.cat((input_tensor, torch.from_numpy(ubase).reshape((1, 1))), dim=0)
+            output_tensor = torch.cat((output_tensor, torch.from_numpy(xbase.T).reshape((1, 2))), dim=0)
+            
+        inputs_arr.append(input_tensor.detach())
+        outputs_arr.append(output_tensor.detach())
+
+        # Initialize output and input tensors for the simulation as empty tensors
+        output_tensor = torch.from_numpy(x_init.T).reshape((1, 2))
+        # Apply inputs from the controller of the base model to the learned model
+        for i in range(input_tensor.shape[0]):
+            ulearned = input_tensor[i, :].detach().numpy().reshape((1, 1))
+            xlearned = learned_sys.base_model.A.weight.detach().numpy() @ xlearned + learned_sys.base_model.B.weight.detach().numpy() @ ulearned
+
+            # Append the state and input to the input and output arrays
+            output_tensor = torch.cat((output_tensor, torch.from_numpy(xlearned.T).reshape((1, 2))), dim=0)
+
+        inputs_arr.append(input_tensor.detach())
+        outputs_arr.append(output_tensor.detach())
+
+    # Plot all the simulated trajectories
+    plt.figure()
+    markers = ['x', '+']
+    for i in range(len(inputs_arr)):
+        # use matplotlib to plot x-y trajectories
+        plt.plot(outputs_arr[i][:, 0], outputs_arr[i][:, 1], marker=markers[i])
+        # Add a circle at the initial state
+        plt.plot(initial_states[i][:, 0], initial_states[i][:, 1], marker=markers[i], markersize=10)
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.title('Simulated trajectories')
     plt.show()
 
 if __name__ == "__main__":
