@@ -25,6 +25,8 @@ class BaseLinearModel(nn.Module):
         y_now = self.A(y_prev) + self.B(u_now)
         return y_now
     
-    def set_model_matrices(self, A, B):
-        self.A.weight = nn.parameter.Parameter(A)
-        self.B.weight = nn.parameter.Parameter(B)
+    def set_model_matrices(self, A=None, B=None):
+        if A is not None:
+            self.A.weight = nn.parameter.Parameter(A)
+        if B is not None:
+            self.B.weight = nn.parameter.Parameter(B)

@@ -38,7 +38,7 @@ class System:
 
         self.loss_fn = nn.MSELoss()
 
-    def set_linear_model_matrices(self, A, B):
+    def set_linear_model_matrices(self, A=None, B=None):
         self.base_model.set_model_matrices(A, B)
 
     def parse_config(self, config):
