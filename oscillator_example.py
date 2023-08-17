@@ -53,14 +53,14 @@ def main():
                          sys.base_model.B.weight.detach().numpy(),
                          Q, R)
     simulation_horizon = 10
-    for i in range(100):
+    for j in range(100):
         x_init = 15 * np.random.rand(2, 1) - 7.5
         x = x_init
         if learn_with_controller:
             u = -K @ x
         else:
             # oscillating input to excite the system
-            u = np.array([[-1.0 * np.sin(0.1 * i)]])
+            u = np.array([[-1.0 * np.sin(0.1 * 0)]])
 
         # Append the initial state to the initial states array
         initial_states.append(torch.from_numpy(x_init.T).reshape((1, 2)))
@@ -69,12 +69,12 @@ def main():
         output_tensor = torch.empty((0, 2), dtype=torch.float64)
         input_tensor = torch.empty((0, 1), dtype=torch.float64)
         
-        for _ in range(simulation_horizon):
+        for i in range(simulation_horizon):
             if learn_with_controller:
                 u = -K @ x
             else:
                 # oscillating input to excite the system
-                u = np.array([[-1.0 * np.sin(0.1 * i)]])
+                u = np.array([[-1.0 * np.sin(0.1 * (j+i))]])
 
             # Simulate the system
             x = sys.base_model.A.weight.detach().numpy() @ x + sys.base_model.B.weight.detach().numpy() @ u
