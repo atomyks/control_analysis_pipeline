@@ -260,7 +260,7 @@ class System:
             return
         
         if optimizer is None:
-            optimizer = torch.optim.Adam(params, lr=0.01)
+            optimizer = torch.optim.SGD(params, lr=0.01)
         
 
         # Create list of zero initial states for each bag of data of size 1 x num_states
