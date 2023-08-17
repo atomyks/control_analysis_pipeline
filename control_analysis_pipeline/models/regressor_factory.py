@@ -29,7 +29,7 @@ class RegressorFactory(nn.Module):
         """
         :param u_now: (BATCH x NUM_ACTIONS)
         :param y_prev: (BATCH x NUM_STATES)
-        :return: computed regressors (BATCH x NUM_STATES)
+        :return: computed regressors (BATCH x NUM_REGRESSORS)
         """
 
         # Fix dimensions
@@ -66,6 +66,11 @@ class RegressorFactory(nn.Module):
         self.regressor_library = []
 
     def set_history(self, action_history: torch.tensor, state_history: torch.tensor) -> None:
+        """
+        :param action_history: (BATCH x ACTION_HISTORY x NUM_ACTIONS)
+        :param state_history: (BATCH x STATE_HISTORY x NUM_STATES)
+        :return:
+        """
         current_action_history_shape = torch.tensor([self.batch_size, self.action_history_size, self.num_actions])
         current_state_history_shape = torch.tensor([self.batch_size, self.state_history_size, self.num_states])
         if not torch.equal(torch.tensor(action_history.shape), current_action_history_shape):
