@@ -232,7 +232,7 @@ class System:
     #     pass
 
     def learn_grad(self, inputs: torch.tensor, true_outputs: torch.tensor, initial_state: torch.tensor = None, 
-                   optimizer=None, epochs=100, use_delay=True, use_base_model=True, use_error_model=True):
+                   optimizer=None, stop_threshold=1e-15, epochs=100, use_delay=True, use_base_model=True, use_error_model=True):
         
         # Check if data is provided, raise error if not
         if true_outputs is None:
@@ -271,12 +271,17 @@ class System:
     
         for _ in range(epochs):
             print("------")
+            loss_above_threshold = False
             for i in range(NUM_SIGNALS):
                 optimizer.zero_grad()
                 _, loss = self.simulate(inputs[i], initial_state[i], true_outputs[i], use_delay, use_base_model, use_error_model)
+                if loss > stop_threshold:
+                    loss_above_threshold = True
                 print(f"Loss: {loss}")
                 loss.backward()
                 optimizer.step()
+            if not loss_above_threshold:
+                break
         
         print("Learning finished")
         print("------")
