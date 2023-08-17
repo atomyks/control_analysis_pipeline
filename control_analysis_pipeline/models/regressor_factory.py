@@ -65,6 +65,13 @@ class RegressorFactory(nn.Module):
     def reset_regressor_library(self):
         self.regressor_library = []
 
+    def set_batch_size(self, new_batch_size):
+        if new_batch_size > 0:
+            self.batch_size = new_batch_size
+            self.reset_history()
+        else:
+            raise ValueError('Batch size needs to be at least one')
+
     def set_history(self, action_history: torch.tensor, state_history: torch.tensor) -> None:
         """
         :param action_history: (BATCH x ACTION_HISTORY x NUM_ACTIONS)
@@ -132,6 +139,9 @@ class RegressorFactory(nn.Module):
         if s_defs is None:
             s_defs = []
         self.regressor_library.append((fun, a_defs, s_defs))
+
+    def __len__(self):
+        return len(self.regressor_library)
 
     def __str__(self):
         out_text = ""
