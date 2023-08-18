@@ -1,0 +1,22 @@
+# Example config file
+
+in_files_dir: "./input_files"
+out_files_dir: "./output_files"
+
+resampling_period: 0.03 # period that should be used when resampling the data
+minimum_signal_length: 10.0
+discard_after_enable: 2.0
+
+data_to_load:
+  x:
+    topic: "/integrator/x"
+    var: "state.x"
+    type: "output"
+  y:
+    topic: "/integrator/y"
+    var: "state.y"
+    type: "output"
+  u:
+    topic: "/control/command/actuation_cmd"
+    var: "actuation.actuation_cmd"
+    type: "input"
