@@ -39,11 +39,11 @@ class ErrorGPModel(nn.Module):
 
         self.num_inputs = num_inputs
         self.num_outputs = num_outputs
-        self.batch_size = 1
+        self.init_lengthscale = 0.01
 
         self.action_history_size = 1
         self.state_history_size = 1
-        self.reg = RegressorFactory(batch_size=self.batch_size, num_actions=self.num_inputs,
+        self.reg = RegressorFactory(batch_size=1, num_actions=self.num_inputs,
                                     num_states=self.num_outputs, action_history_size=self.action_history_size,
                                     state_history_size=self.state_history_size)
 
@@ -123,9 +123,9 @@ class ErrorGPModel(nn.Module):
 
     def get_regressors(self, u_input: torch.tensor, y_last: torch.tensor):
         """
-        :param u_input: torch.tensor, BATCH x INPUTS, system input
-        :param y_last: torch.tensor, BATCH x STATES, system input
-        :return: computed regressors (BATCH x NUM_REGRESSORS)
+        :param u_input: torch.tensor, 1 x INPUTS, system input
+        :param y_last: torch.tensor, 1 x STATES, system input
+        :return: computed regressors (1 x NUM_REGRESSORS)
         """
         regressors = self.reg(u_input,  # torch.rand((batch_size, num_actions))
                               y_last)  # torch.rand((batch_size, num_states))
@@ -230,7 +230,7 @@ class ErrorGPModel(nn.Module):
         return output, output.mean, torch.squeeze(confidence[0]), torch.squeeze(
             confidence[1]), torch.squeeze(output.stddev) ** 2  # mean, lower, upper
 
-    def init_gp(self):
+    def init_learning(self):
         train_x = self.gp_input  # (DATA_LENGTH x NUM_REGRESSORS)
         train_y = self.gp_output  # (DATA_LENGTH x NUM_OUTPUTS)
 
@@ -255,8 +255,7 @@ class ErrorGPModel(nn.Module):
         self.gp_model = BatchIndependentMultitaskGPModel(train_x_scaled, train_y_scaled, self.gp_likelihood,
                                                          num_inputs=self.regressor_size(), num_outputs=self.num_outputs)
 
-        init_lengthscale = 0.01
-        self.gp_model.covar_module.base_kernel.lengthscale = init_lengthscale
+        self.gp_model.covar_module.base_kernel.lengthscale = self.init_lengthscale
 
         return train_x_scaled, train_y_scaled
 
@@ -299,7 +298,7 @@ if __name__ == "__main__":
 
     # init training
     gp.set_training_data(train_x, train_u, train_y)
-    train_x_scaled, train_y_scaled = gp.init_gp()
+    train_x_scaled, train_y_scaled = gp.init_learning()
     training_iterations = 200
     gp.train()
     optimizer = torch.optim.Adam(gp.gp_model.parameters(), lr=0.1)  # Includes GaussianLikelihood parameters
