@@ -70,13 +70,13 @@ class ErrorGPModel(nn.Module):
         # new_regressor = lambda a, s: torch.cos(s[0])
         # self.reg.add(new_regressor, s_defs=s_def)
 
-        a_def = [(0, 0)]
+        a_def = [(0, 0)]  # ------------------------------------------------------------
         new_regressor = lambda a, s: a[0]
         self.reg.add(new_regressor, a_defs=a_def)
 
-        # a_def = [(0, 0)]
-        # new_regressor = lambda a, s: torch.sin(a[0])
-        # self.reg.add(new_regressor, a_defs=a_def)
+        a_def = [(0, 0)]
+        new_regressor = lambda a, s: torch.sin(a[0])
+        self.reg.add(new_regressor, a_defs=a_def)
         #
         # a_def = [(0, 0)]
         # new_regressor = lambda a, s: torch.cos(a[0])
@@ -131,77 +131,93 @@ class ErrorGPModel(nn.Module):
                               y_last)  # torch.rand((batch_size, num_states))
         return regressors
 
-    # def set_batch_size(self, new_batch_size):
-    #     if new_batch_size > 0:
-    #         self.batch_size = 1  # new_batch_size
-    #     else:
-    #         raise ValueError('Batch size needs to be at least one')
-
-    @staticmethod
-    def check_input_data_dims(input_data, last_dim_size):
-        """
-        :param input_data: train_s: (BATCH x TIME_LENGTH x NUM_XX)
-        :param last_dim_size:
-        :return:
-        """
-        if input_data.dim() == 1:
-            batch_dim = 1
-            data_length = 1
-            num_actions = input_data.shape
-        elif input_data.dim() == 2:
-            batch_dim = 1
-            data_length, num_actions = input_data.shape
-        elif input_data.dim() == 3:
-            batch_dim, data_length, num_actions = input_data.shape
-        else:
-            raise ValueError('dimension mismatch')
-        if num_actions == last_dim_size:
-            input_data = input_data.reshape((batch_dim, data_length, num_actions))
-        else:
-            raise ValueError('dimension mismatch')
-        return input_data, batch_dim, data_length
-
     def regressor_size(self):
         return len(self.reg)
 
     def set_training_data(self,
-                          train_s: torch.tensor,
-                          train_a: torch.tensor,
-                          train_out: torch.tensor):  # train_x, train_u, train_y
+                          train_s: torch.tensor or list,
+                          train_a: torch.tensor or list,
+                          train_out: torch.tensor or list):  # train_x, train_u, train_y
         """
-        :param train_s: (BATCH x TIME_LENGTH x NUM_STATES)
-        :param train_a: (BATCH x TIME_LENGTH x NUM_ACTIONS)
-        :param train_out: (BATCH x TIME_LENGTH x NUM_STATES)
+
+        Note: BATCH dimension can be either list or torch.tensor. DATA and last  dimension needs to be torch.tensor.
+        :param train_s: (BATCH x DATA_LENGTH x NUM_STATES)
+        :param train_a: (BATCH x DATA_LENGTH x NUM_ACTIONS)
+        :param train_out: (BATCH x DATA_LENGTH x NUM_STATES)
         :return:
         """
-        train_a, batch_dim, data_length = self.check_input_data_dims(train_a, self.num_inputs)
-        train_s, _, _ = self.check_input_data_dims(train_s, self.num_outputs)
-        train_out, _, _ = self.check_input_data_dims(train_out, self.num_outputs)
+        if type(train_s) == list:
+            batch_dim = len(train_s)
+            if not (len(train_s) == len(train_a) == len(train_out)):
+                raise ValueError('dimension mismatch')
+        else:
+            if train_s.dim() == 2:
+                batch_dim = 1
+                train_s = train_s.reshape((batch_dim, train_s.shape[0], train_s.shape[1]))
+                train_a = train_a.reshape((batch_dim, train_a.shape[0], train_a.shape[1]))
+                train_out = train_out.reshape((batch_dim, train_out.shape[0], train_out.shape[1]))
+            if train_s.dim() == 3:
+                batch_dim, _, _ = train_s.shape
+            else:
+                raise ValueError('dimension mismatch')
 
+        # data needs to be synchronized at all time -> we need to take the same history size from both signals
         required_history = max(self.action_history_size, self.state_history_size)
 
-        self.gp_input = torch.zeros(
-            ((data_length - required_history) * batch_dim, self.regressor_size()))  # (DATA_LENGTH x NUM_INPUTS)
-        self.gp_output = torch.zeros(
-            ((data_length - required_history) * batch_dim, self.num_outputs))  # (DATA_LENGTH x NUM_OUTPUTS)
+        self.gp_input = None
+        self.gp_output = None
         idx = 0
 
+        # needs to be done iteratively to support list on the input
         for i in range(batch_dim):
+            # get dimensions of the current data signal
+            train_s_single = train_s[i]
+            data_length_s, num_states = train_s_single.shape
+            train_a_single = train_a[i]
+            data_length_a, num_actions = train_a_single.shape
+            train_out_single = train_out[i]
+            data_length_out, num_outputs = train_out_single.shape
+
+            # check dimensions of the current data signal
+            if not (data_length_s == data_length_a == data_length_out):
+                raise ValueError('dimension mismatch')
+            if (not num_states == self.num_outputs) or (not num_actions == self.num_inputs) or (
+                    not num_outputs == self.num_outputs):
+                raise ValueError('dimension mismatch')
+
+            data_length = data_length_s  # since all of them should be the same it does not matter which one we take
+
+            if self.gp_input is None:
+                self.gp_input = torch.zeros((data_length - required_history, self.regressor_size()))
+            else:
+                self.gp_input = torch.cat(
+                    (self.gp_input, torch.zeros((data_length - required_history, self.regressor_size()))
+                     ), dim=0)
+            if self.gp_output is None:
+                self.gp_output = torch.zeros((data_length - required_history, self.num_outputs))
+            else:
+                self.gp_output = torch.cat(
+                    (self.gp_output, torch.zeros((data_length - required_history, self.num_outputs))
+                     ), dim=0)
+
+            # set start and end of the history correctly for all signals
             s_history_start = required_history - self.state_history_size
             a_history_start = required_history - self.action_history_size
 
-            history_s = train_s[i][s_history_start:required_history, :].reshape((1,
-                                                                                 self.state_history_size,
-                                                                                 self.num_outputs))
-            history_a = train_a[i][a_history_start:required_history, :].reshape((1,
-                                                                                 self.action_history_size,
-                                                                                 self.num_inputs))
-
+            # set regressor history
+            history_s = train_s_single[s_history_start:required_history, :].reshape((1,
+                                                                                     self.state_history_size,
+                                                                                     self.num_outputs))
+            history_a = train_a_single[a_history_start:required_history, :].reshape((1,
+                                                                                     self.action_history_size,
+                                                                                     self.num_inputs))
             self.reg.set_history(history_a, history_s)
+
+            # process training data
             for j in range(required_history, data_length):
-                regressor = self.get_regressors(u_input=train_a[i][j, :], y_last=train_s[i][j, :])
+                regressor = self.get_regressors(u_input=train_a_single[j, :], y_last=train_s_single[j, :])
                 self.gp_input[idx, :] = regressor
-                self.gp_output[idx, :] = train_out[i][j, :]
+                self.gp_output[idx, :] = train_out_single[j, :]
                 idx += 1
 
     def scale_and_predict_model_step(self, gp_input):
