@@ -235,8 +235,8 @@ class System:
     #     pass
 
     def learn_grad(self, inputs: torch.tensor, true_outputs: torch.tensor, initial_state: torch.tensor = None, 
-                   batch_size=None,
-                   optimizer=None, stop_threshold=1e-15, epochs=100, use_delay=True, use_base_model=True, use_error_model=True):
+                   batch_size: int = None, optimizer: torch.optim = torch.optim.SGD, learning_rate: int = 0.01,
+                   stop_threshold=1e-15, epochs=100, use_delay=True, use_base_model=True, use_error_model=True):
         
         # Check if data is provided, raise error if not
         if true_outputs is None:
@@ -291,9 +291,7 @@ class System:
             print("No parameters to optimize")
             return
         
-        if optimizer is None:
-            optimizer = torch.optim.SGD(params, lr=0.1)
-        
+        optim = optimizer(params, lr=learning_rate)
 
         # Create list of initial states for each bag of data of size 1 x num_states
         if initial_state is None:
@@ -344,7 +342,7 @@ class System:
             print("------")
             loss_above_threshold = False
             for i in range(len(batched_inputs)):
-                optimizer.zero_grad()
+                optim.zero_grad()
                 _, loss = self.simulate(batched_inputs[i], batched_initial_state[i], batched_true_outputs[i], use_delay, use_base_model, use_error_model)
                 if loss > stop_threshold:
                     loss_above_threshold = True
@@ -352,7 +350,7 @@ class System:
                 print("Iteration: " + str(epoch) + " Loss: " + str(loss.item()))
 
                 loss.backward()
-                optimizer.step()
+                optim.step()
             if not loss_above_threshold:
                 break
         

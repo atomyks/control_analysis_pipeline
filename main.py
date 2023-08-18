@@ -42,7 +42,7 @@ def main():
 
     # Train the model on the bags of data
     sys.learn_grad(inputs=inputs_arr, true_outputs=outputs_arr, 
-                   batch_size=2,
+                   batch_size=2, optimizer=torch.optim.SGD, learning_rate=0.2,
                    epochs=100, use_delay=False, use_base_model=True, use_error_model=False)
 
     print('Learned A: ', sys.base_model.A.weight)
