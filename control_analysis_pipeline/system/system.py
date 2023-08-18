@@ -122,9 +122,8 @@ class System:
 
         return state_array, loss
 
-    def plot_simulation(self, input_array: torch.tensor, initial_state: torch.tensor = None,
-                        true_state: torch.tensor = None,
-                        ax : plt.Axes = None,
+    def plot_simulation(self, input_array: torch.tensor, initial_state: torch.tensor = None, true_state: torch.tensor = None,
+                        ax : plt.Axes = None, show_hidden_states=True, show_input=True,
                         use_delay=True, use_base_model=True, use_error_model=True):
         """
         :param input_array: torch.tensor, (TIME x NUM_INPUTS)
@@ -155,10 +154,12 @@ class System:
 
         if ax is None:
             fig, ax = plt.subplots()
-        for i in range(num_inputs):
-            label = f"Input: {self.inputs[i]}"
-            time_axis = np.arange(0, time_length, 1) * self.sampling_period
-            ax.plot(time_axis, input_array[:, i], drawstyle='steps-pre', label=label)
+
+        if show_input:
+            for i in range(num_inputs):
+                label = f"Input: {self.inputs[i]}"
+                time_axis = np.arange(0, time_length, 1) * self.sampling_period
+                ax.plot(time_axis, input_array[:, i], drawstyle='steps-pre', label=label)
 
         for i in range(num_observed_states):
             if i >= len(self.outputs):
@@ -168,7 +169,11 @@ class System:
             time_axis = np.arange(0, time_length, 1) * self.sampling_period
             ax.plot(time_axis, true_state[:, i], marker='o', label=label, markersize=10)
 
+
         for i in range(self.num_states):
+            # Do not show states that are not outputs
+            if not show_hidden_states and i >= num_observed_states:
+                break
             if i >= len(self.outputs):
                 label = f"State: x{i}"
             else:
@@ -230,8 +235,8 @@ class System:
     #     pass
 
     def learn_grad(self, inputs: torch.tensor, true_outputs: torch.tensor, initial_state: torch.tensor = None, 
-                   batch_size=None,
-                   optimizer=None, stop_threshold=1e-15, epochs=100, use_delay=True, use_base_model=True, use_error_model=True):
+                   batch_size: int = None, optimizer: torch.optim = torch.optim.SGD, learning_rate: int = 0.01,
+                   stop_threshold=1e-15, epochs=100, use_delay=True, use_base_model=True, use_error_model=True):
         
         # Check if data is provided, raise error if not
         if true_outputs is None:
@@ -286,14 +291,20 @@ class System:
             print("No parameters to optimize")
             return
         
-        if optimizer is None:
-            optimizer = torch.optim.SGD(params, lr=0.01)
-        
+        optim = optimizer(params, lr=learning_rate)
 
         # Create list of initial states for each bag of data of size 1 x num_states
         if initial_state is None:
-            # Construct initial state by concatenating all initial states
-            initial_state =  [true_output[0].reshape((1, -1)) for true_output in true_outputs]
+            initial_state = []
+            if self.num_states > true_outputs[0].shape[1]:
+                # Pad initial state with zeros if it is smaller than the number of states
+                for true_output in true_outputs:
+                    init_state = torch.zeros((1, self.num_states), dtype=torch.float64)
+                    init_state[:, :true_outputs[0].shape[1]] = true_output[0].reshape((1, -1))
+                    initial_state.append(init_state)
+            else:
+                # Construct initial state by concatenating all initial states
+                initial_state =  [true_output[0].reshape((1, -1)) for true_output in true_outputs]
             # Then remove the first element from each true output
             true_outputs = [true_output[1:] for true_output in true_outputs]
             # Only fix inputs if they are of equal length to outputs
@@ -327,17 +338,19 @@ class System:
             batched_true_outputs = true_outputs
             batched_initial_state = initial_state
             
-        for _ in range(epochs):
+        for epoch in range(epochs):
             print("------")
             loss_above_threshold = False
             for i in range(len(batched_inputs)):
-                optimizer.zero_grad()
+                optim.zero_grad()
                 _, loss = self.simulate(batched_inputs[i], batched_initial_state[i], batched_true_outputs[i], use_delay, use_base_model, use_error_model)
                 if loss > stop_threshold:
                     loss_above_threshold = True
-                print(f"Loss: {loss}")
+                # print loss and iteration number
+                print("Iteration: " + str(epoch) + " Loss: " + str(loss.item()))
+
                 loss.backward()
-                optimizer.step()
+                optim.step()
             if not loss_above_threshold:
                 break
         
