@@ -93,19 +93,29 @@ class ErrorGPModel(nn.Module):
         #         new_regressor = lambda a, s: s[0]
         #         self.reg.add(new_regressor, s_defs=s_def)
 
-        # self.lin1 = nn.Linear(num_inputs + num_outputs, 10, dtype=torch.double)
-        # self.lin2 = nn.Linear(10, num_outputs, dtype=torch.double)
-
-    def forward(self, u_input: torch.tensor, y_last: torch.tensor or None = None):
-        # def forward(self, u_input: torch.tensor):
+    def forward(self,
+                regressors: torch.tensor or None = None,
+                u_input: torch.tensor or None = None,
+                y_last: torch.tensor or None = None):
         """
-        :param u_input: torch.tensor, BATCH x INPUTS, system input
-        :param y_last: torch.tensor, BATCH x STATES, system input
+        :param regressors: torch.tensor, BATCH x NUM_REGRESSORS, GP input
+        :param u_input: torch.tensor, BATCH x NUM_INPUTS, system action
+        :param y_last: torch.tensor, BATCH x NUM_STATES, system state
         :return:
+                 output - gpytorch.distributions.MultitaskMultivariateNormal
+                        - .mean (DATA_LENGTH x NUM_OUTPUTS)
+                        - .stddev (DATA_LENGTH x NUM_OUTPUTS)
+                        - .covariance_matrix (NUM_OUTPUTS * DATA_LENGTH x NUM_OUTPUTS * DATA_LENGTH)
         """
-        if self.gp_model.training:
-            output, mean, lower, upper, cov = self.predict_model_step(u_input)
-            return output
+        if regressors is None and (u_input is None or y_last is None):
+            raise ValueError("either 'regressors' should be None or both 'u_input' and 'y_last' should be None")
+        elif regressors is not None and (u_input is not None or y_last is not None):
+            raise ValueError("either 'regressors' should be None or both 'u_input' and 'y_last' should be None")
+
+        if regressors is not None:
+            # for training just do predict the model because the input data should be already scaled by
+            output, mean, lower, upper, cov = self.predict_model_step(regressors)
+            return output, mean, lower, upper, cov
         else:
             regressors = self.get_regressors(u_input, y_last)
             output, mean, lower, upper, cov = self.scale_and_predict_model_step(regressors)
@@ -245,6 +255,9 @@ class ErrorGPModel(nn.Module):
         self.gp_model = BatchIndependentMultitaskGPModel(train_x_scaled, train_y_scaled, self.gp_likelihood,
                                                          num_inputs=self.regressor_size(), num_outputs=self.num_outputs)
 
+        init_lengthscale = 0.01
+        self.gp_model.covar_module.base_kernel.lengthscale = init_lengthscale
+
         return train_x_scaled, train_y_scaled
 
     def __str__(self):
@@ -271,6 +284,7 @@ if __name__ == "__main__":
             train_x[:, 0].reshape((100, 1)).size()) * 0.2 + train_u,
     ], -1).reshape((100, 2))
 
+    # set model
     gp = ErrorGPModel(num_inputs=1, num_outputs=2)
 
     print(gp)
@@ -281,55 +295,43 @@ if __name__ == "__main__":
     y2_ax.plot(train_x.detach().numpy(), train_y[:, 1].detach().numpy(), 'k*')
     plt.show()
 
-    # TRAIN GP model
+    # TRAIN GP model ------------------------------------------------------------------------------
 
+    # init training
     gp.set_training_data(train_x, train_u, train_y)
     train_x_scaled, train_y_scaled = gp.init_gp()
-    training_iterations = 100
-    # Find optimal model hyperparameters
+    training_iterations = 200
     gp.train()
-
-    # Use the adam optimizer
     optimizer = torch.optim.Adam(gp.gp_model.parameters(), lr=0.1)  # Includes GaussianLikelihood parameters
-    # "loss_fun" for GPs - the marginal log likelihood
     loss_fun = gpytorch.mlls.ExactMarginalLogLikelihood(gp.gp_likelihood, gp.gp_model)
+
+    # do training iterations
     with gpytorch.settings.cholesky_jitter(1e-1):
         for i in range(training_iterations):
             optimizer.zero_grad()
-            output = gp(train_x_scaled)
-            # output, mean, lower, upper, cov = gp.scale_and_predict_model_step(train_x_scaled)
-
-            # train_x_scaled - np.array (DATA_LENGTH x NUM_OUTPUTS)
-
-            # output - gpytorch.distributions.MultitaskMultivariateNormal
-            #        - .mean (DATA_LENGTH x NUM_OUTPUTS)
-            #        - .stddev (DATA_LENGTH x NUM_OUTPUTS)
-            #        - .covariance_matrix (NUM_OUTPUTS * DATA_LENGTH x NUM_OUTPUTS * DATA_LENGTH)
-            # print(f"Scaled output covariance_matrix: {output.covariance_matrix}")
-
+            output, _, _, _, _ = gp(regressors=train_x_scaled)
             loss = -loss_fun(output, train_y_scaled)
             loss.backward()
             print('Iter %d/%d - Loss: %.3f' % (i + 1, training_iterations, loss.item()))
             optimizer.step()
 
-    # EVALUATE SYSTEM
+    # EVALUATE SYSTEM ------------------------------------------------------------------------------
 
     # Set into eval mode
     gp.eval()
 
     simulation_length = 51
-
     # Initialize plots
     f, (y1_ax, y2_ax) = plt.subplots(1, 2, figsize=(8, 3))
     predictions = torch.zeros_like(train_y)
     mean = torch.zeros((simulation_length, 2))
     lower = torch.zeros((simulation_length, 2))
     upper = torch.zeros((simulation_length, 2))
+
     # Make predictions
     with (torch.no_grad(), gpytorch.settings.fast_pred_var()):
-        # test_x = torch.linspace(0, 1, 51)
-        start_sim = -1.0
-        end_sim = 2.0
+        start_sim = -0.5
+        end_sim = 1.5
         test_x = torch.stack([torch.linspace(start_sim, end_sim, simulation_length).reshape((simulation_length, 1)),
                               torch.linspace(start_sim, end_sim, simulation_length).reshape((simulation_length, 1))
                               ], -1).reshape((simulation_length, 2))
@@ -337,7 +339,7 @@ if __name__ == "__main__":
         test_u = torch.cos(torch.linspace(start_sim, end_sim, simulation_length).reshape((simulation_length, 1)) * 30.0)
 
         for i in range(51):
-            _, mean_, lower_, upper_ = gp(test_u[i], test_x[i])  # u_input: torch.tensor, y_last
+            _, mean_, lower_, upper_ = gp(u_input=test_u[i], y_last=test_x[i])  # u_input: torch.tensor, y_last
             mean[i] = mean_
             lower[i] = lower_
             upper[i] = upper_
