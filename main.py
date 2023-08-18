@@ -4,7 +4,7 @@ from yaml import Loader
 from control_analysis_pipeline.data_preprocessing.data_preprocessor import DataPreprocessor
 from control_analysis_pipeline.system.system import System
 import torch
-
+import matplotlib.pyplot as plt
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -31,7 +31,7 @@ def main():
 
     data = data_preprocessor.get_preprocessed_data()
 
-    sys = System(data)
+    sys = System(data, num_states=4)
     sys.parse_config(config)
 
     sys.randomize_samples()
@@ -41,18 +41,29 @@ def main():
     outputs_arr = sys.get_data_from_dict('output', 'training')
 
     # Train the model on the bags of data
-    sys.learn_grad(inputs=inputs_arr, true_outputs=outputs_arr, epochs=100, use_delay=True, use_base_model=True, use_error_model=False)
+    sys.learn_grad(inputs=inputs_arr, true_outputs=outputs_arr, 
+                   batch_size=2,
+                   epochs=100, use_delay=False, use_base_model=True, use_error_model=False)
 
-    bag_idx = 0
-    input_arr = torch.from_numpy(sys.loaded_data[bag_idx][sys.inputs[0]]).reshape(
-        (sys.loaded_data[bag_idx][sys.inputs[0]].shape[0], 1))
-    output_arr = torch.from_numpy(sys.loaded_data[bag_idx][sys.outputs[0]]).reshape(
-        (sys.loaded_data[bag_idx][sys.outputs[0]].shape[0], 1))
-    
-    print(input_arr.shape)
-    sys.plot_simulation(input_array=input_arr,
-                        true_state=output_arr,
-                        use_delay=True, use_base_model=True, use_error_model=False)
+    print('Learned A: ', sys.base_model.A.weight)
+    print('Learned B: ', sys.base_model.B.weight)
+
+    # Plot simulation results of first 2 bags of data
+    fig, axs = plt.subplots(1,2)
+    for bag_idx, ax  in enumerate(axs.ravel()):
+        input_arr = torch.from_numpy(sys.loaded_data[bag_idx][sys.inputs[0]]).reshape(
+            (sys.loaded_data[bag_idx][sys.inputs[0]].shape[0], 1))
+        output_arr = torch.from_numpy(sys.loaded_data[bag_idx][sys.outputs[0]]).reshape(
+            (sys.loaded_data[bag_idx][sys.outputs[0]].shape[0], 1))
+        
+        sys.plot_simulation(input_array=input_arr,
+                            true_state=output_arr,
+                            ax=ax, show_input=True, show_hidden_states=False,
+                            use_delay=True, use_base_model=True, use_error_model=False)
+    # top right legend
+    handles, labels = ax.get_legend_handles_labels()
+    fig.legend(handles, labels, loc='upper right')
+    plt.show()
 
     # u_init -> BATCH x history x inputs
     # x_last -> BATCH x history x states
