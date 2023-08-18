@@ -287,13 +287,21 @@ class System:
             return
         
         if optimizer is None:
-            optimizer = torch.optim.SGD(params, lr=0.01)
+            optimizer = torch.optim.SGD(params, lr=0.1)
         
 
         # Create list of initial states for each bag of data of size 1 x num_states
         if initial_state is None:
-            # Construct initial state by concatenating all initial states
-            initial_state =  [true_output[0].reshape((1, -1)) for true_output in true_outputs]
+            initial_state = []
+            if self.num_states > true_outputs[0].shape[1]:
+                # Pad initial state with zeros if it is smaller than the number of states
+                for true_output in true_outputs:
+                    init_state = torch.zeros((1, self.num_states), dtype=torch.float64)
+                    init_state[:, :true_outputs[0].shape[1]] = true_output[0].reshape((1, -1))
+                    initial_state.append(init_state)
+            else:
+                # Construct initial state by concatenating all initial states
+                initial_state =  [true_output[0].reshape((1, -1)) for true_output in true_outputs]
             # Then remove the first element from each true output
             true_outputs = [true_output[1:] for true_output in true_outputs]
             # Only fix inputs if they are of equal length to outputs
@@ -327,7 +335,7 @@ class System:
             batched_true_outputs = true_outputs
             batched_initial_state = initial_state
             
-        for _ in range(epochs):
+        for epoch in range(epochs):
             print("------")
             loss_above_threshold = False
             for i in range(len(batched_inputs)):
@@ -335,7 +343,9 @@ class System:
                 _, loss = self.simulate(batched_inputs[i], batched_initial_state[i], batched_true_outputs[i], use_delay, use_base_model, use_error_model)
                 if loss > stop_threshold:
                     loss_above_threshold = True
-                print(f"Loss: {loss}")
+                # print loss and iteration number
+                print("Iteration: " + str(epoch) + " Loss: " + str(loss.item()))
+
                 loss.backward()
                 optimizer.step()
             if not loss_above_threshold:
