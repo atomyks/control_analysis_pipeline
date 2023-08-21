@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from control_analysis_pipeline.helpers.circular_buffer import CircularBuffer
+from control_analysis_pipeline.utils.circular_buffer import CircularBuffer
 import inspect
 from typing import Callable
 
