@@ -22,7 +22,7 @@ class Model(nn.Module):
         self.nongrad_params = None
 
         # Basic model parameters
-        self.num_action = num_action
+        self.num_actions = num_action
         self.num_states = num_states
 
         # Regressor parameters

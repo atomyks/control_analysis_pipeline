@@ -1,5 +1,4 @@
 from control_analysis_pipeline.model.delay_model.delay_model import DelayModel
-from control_analysis_pipeline.model.error_model.error_model_demo import ErrorModelDemo
 from control_analysis_pipeline.model.base_model.base_model_linear import BaseLinearModel
 from control_analysis_pipeline.model.base_model.base_model_feedforward import BaseFeedforwardModel
 import numpy as np
@@ -9,7 +8,7 @@ import matplotlib.pyplot as plt
 
 
 class System:
-    def __init__(self, loaded_data : dict = None, num_states : int = 1, num_inputs : int = 1, sampling_period : float = 0.01):
+    def __init__(self, loaded_data : dict = None, num_states : int = 1, num_actions : int = 1, sampling_period : float = 0.01):
         if loaded_data is not None:
             self.loaded_data = loaded_data["data"]
         else:
@@ -18,7 +17,7 @@ class System:
         self.training_data = None
         self.testing_data = None
         self.num_states = num_states
-        self.num_inputs = num_inputs
+        self.num_actions = num_actions
 
         if loaded_data is not None:
             self.sampling_period = loaded_data["header"]["sampling_period"]
@@ -28,10 +27,10 @@ class System:
         self.output_data = None
 
         # system delay
-        self.delay_model = DelayModel(batch_size=1, num_inputs=self.num_inputs)
-        self.base_model = BaseLinearModel(num_inputs=self.num_inputs, num_outputs=self.num_states)
-        self.fd_model = BaseFeedforwardModel(num_inputs=self.num_inputs, num_outputs=self.num_states)
-        self.error_model = ErrorModelDemo(num_inputs=self.num_inputs, num_outputs=self.num_states)
+        self.delay_model = DelayModel(batch_size=1, num_actions=self.num_actions)
+        self.base_model = BaseLinearModel(num_actions=self.num_actions, num_states=self.num_states)
+        self.fd_model = BaseFeedforwardModel(num_actions=self.num_actions, num_outputs=self.num_states)
+        self.error_model = None
         self.inputs = None
         self.outputs = None
 
@@ -150,13 +149,13 @@ class System:
             num_observed_states = 0
         else:
             _, num_observed_states = true_state.shape
-        time_length, num_inputs = input_array.shape
+        time_length, num_actions = input_array.shape
 
         if ax is None:
             fig, ax = plt.subplots()
 
         if show_input:
-            for i in range(num_inputs):
+            for i in range(num_actions):
                 label = f"Input: {self.inputs[i]}"
                 time_axis = np.arange(0, time_length, 1) * self.sampling_period
                 ax.plot(time_axis, input_array[:, i], drawstyle='steps-pre', label=label)
@@ -279,13 +278,15 @@ class System:
             self.base_model.train()
             params += list(self.base_model.parameters())
         else:
-            self.base_model.eval()
+            if self.base_model is not None:
+                self.base_model.eval()
 
         if use_error_model:
             self.error_model.train()
             params += list(self.error_model.parameters())
         else:
-            self.error_model.eval()
+            if self.error_model is not None:
+                self.error_model.eval()
         
         if len(params) == 0:
             print("No parameters to optimize")

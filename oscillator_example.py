@@ -114,7 +114,7 @@ def main():
     plt.show()
 
     # Create another system object to learn the model
-    learned_sys = System(num_inputs=1, num_states=2)
+    learned_sys = System(num_actions=1, num_states=2)
 
     # # Initialize the model matrices with the true model matrices
     # learned_sys.set_linear_model_matrices(A=sys.base_model.A.weight.detach(),
