@@ -33,7 +33,7 @@ class Model(nn.Module):
                                     state_history_size=self.state_history_size)
         
         # Gradient loss function
-        self.loss = None
+        self.loss_fn = None
 
         # Non-gradient parameters
         self._nongrad_params = {}
@@ -46,7 +46,7 @@ class Model(nn.Module):
         :param loss_function: loss function to use for gradient learning
         """
         self.back_prop = True
-        self.loss = loss_function
+        self.loss_fn = loss_function
         
     def get_regressors(self, u_input: torch.tensor, y_last: torch.tensor):
         """

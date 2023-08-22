@@ -127,4 +127,8 @@ class ErrorGPModel(ErrorModel):
 
         self.gp_model.covar_module.base_kernel.lengthscale = self.init_lengthscale
 
+        # Initialize cost function for the GP
+        mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.gp_likelihood, self.gp_model)
+        self.enable_grad_learning(mll)
+
         return train_x_scaled, train_y_scaled
