@@ -7,7 +7,7 @@ class Model(nn.Module):
     Base class for all models. All models should inherit from this class.
     """
 
-    def __init__(self, num_action=1, num_states=1, action_history_size=1, state_history_size=1):
+    def __init__(self, num_actions=1, num_states=1, action_history_size=1, state_history_size=1):
         """
         :param num_action: int, number of inputs to the model
         :param num_states: int, number of outputs from the model
@@ -22,7 +22,7 @@ class Model(nn.Module):
         self.nongrad_params = None
 
         # Basic model parameters
-        self.num_actions = num_action
+        self.num_actions = num_actions
         self.num_states = num_states
 
         # Regressor parameters
