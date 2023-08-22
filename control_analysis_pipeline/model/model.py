@@ -32,11 +32,22 @@ class Model(nn.Module):
                                     num_states=self.num_states, action_history_size=self.action_history_size,
                                     state_history_size=self.state_history_size)
         
+        # Gradient loss function
+        self.loss = None
+
         # Non-gradient parameters
         self._nongrad_params = {}
         self._nongrad_params_flat = {}
         self._models = {}
 
+    def enable_grad_learning(self, loss_function):
+        """
+        Enable gradient learning. This will enable backpropagation and set the loss function to the given loss function.
+        :param loss_function: loss function to use for gradient learning
+        """
+        self.back_prop = True
+        self.loss = loss_function
+        
     def get_regressors(self, u_input: torch.tensor, y_last: torch.tensor):
         """
         :param u_input: torch.tensor, 1 x INPUTS, system input
