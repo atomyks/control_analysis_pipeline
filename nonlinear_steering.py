@@ -2,11 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import queue
-from control_analysis_pipeline.functional.base_functional import BaseNongradModel
+from control_analysis_pipeline.model.model import Model
 from control_analysis_pipeline.functional.deadzone import Deadzone
 
 
-class NonlinearSteering(BaseNongradModel):
+class NonlinearSteering(Model):
     def __init__(self):
         super(NonlinearSteering, self).__init__()
 
@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     def objective_function(para):
         loss = 0.0
-        for name in model.get_nongrad_param_names():
+        for name in list(nongrad_params_flat.keys()):
             nongrad_params_flat[name].set(para[name])
         for input, target in dataset:
             y = model(input)

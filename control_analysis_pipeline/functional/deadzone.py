@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from control_analysis_pipeline.model.base_model import Model
+from control_analysis_pipeline.model.model import Model
 from control_analysis_pipeline.model.nongradient_parameter import NongradParameter
 
 class Deadzone(Model):

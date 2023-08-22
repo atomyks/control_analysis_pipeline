@@ -241,7 +241,9 @@ class System:
             raise ValueError("No true outputs provided")
         if inputs is None:
             raise ValueError("No inputs provided")
-
+        if true_outputs is None and initial_state is None:
+            raise ValueError("An initial state must be provided if no true outputs are.")
+        
         # Check that all lists are of the same length
         if len(inputs) != len(true_outputs):
             raise ValueError("Input and output lists must be of the same length")
