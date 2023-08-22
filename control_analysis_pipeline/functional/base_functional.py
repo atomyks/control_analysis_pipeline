@@ -22,12 +22,9 @@ class BaseNongradModel(nn.Module):
         self._models[name] = value
 
     def gen_nongrad_params_flat(self):
-        print(f"Module params {self._nongrad_params}")
         self._nongrad_params_flat = self._nongrad_params
         for model_key in list(self._models.keys()):
-            print(f"Model key: {model_key}")
             submodel_nongrad_params = self._models[model_key].gen_nongrad_params_flat()
-            print(submodel_nongrad_params)
             for submodel_key in list(submodel_nongrad_params.keys()):
                 flat_key = model_key + "." + submodel_key
                 self._nongrad_params_flat[flat_key] = submodel_nongrad_params[submodel_key]
