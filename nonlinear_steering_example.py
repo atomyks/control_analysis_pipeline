@@ -59,4 +59,11 @@ if __name__ == "__main__":
     from gradient_free_optimizers import EvolutionStrategyOptimizer
 
     opt = EvolutionStrategyOptimizer(search_space)
-    opt.search(objective_function, n_iter=10000)
+    opt.search(objective_function, n_iter=2)
+
+    for name in list(nongrad_params_flat.keys()):
+        nongrad_params_flat[name].set(opt.best_para[name])
+
+    # Print model after optimization
+    print(model)
+    
