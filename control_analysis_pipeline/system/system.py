@@ -1,6 +1,5 @@
 from control_analysis_pipeline.model.delay_model.delay_model import DelayModel
 from control_analysis_pipeline.model.base_model.base_model_linear import BaseLinearModel
-from control_analysis_pipeline.model.base_model.base_model_feedforward import BaseFeedforwardModel
 import numpy as np
 import torch
 import torch.nn as nn
@@ -29,7 +28,6 @@ class System:
         # system delay
         self.delay_model = DelayModel(batch_size=1, num_actions=self.num_actions)
         self.base_model = BaseLinearModel(num_actions=self.num_actions, num_states=self.num_states)
-        self.fd_model = BaseFeedforwardModel(num_actions=self.num_actions, num_outputs=self.num_states)
         self.error_model = None
         self.inputs = None
         self.outputs = None
@@ -67,7 +65,8 @@ class System:
         if sim_base_model:
             state_next = self.base_model(u_input, state_now)
         else:
-            state_next = self.fd_model(u_input, state_now)
+            # if we are not simulating the base model, then the base model is just the identity
+            state_next = state_now
 
         if sim_error_model:
             error = self.error_model(u_input, state_now)
