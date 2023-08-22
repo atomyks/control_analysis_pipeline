@@ -9,34 +9,6 @@ class ErrorModel(Model):
     def __init__(self, num_actions=1, num_states=1, action_history_size=1, state_history_size=1):
         super(ErrorModel, self).__init__(num_actions=num_actions, num_states=num_states, action_history_size=action_history_size, state_history_size=state_history_size)
 
-    def forward(self,
-                regressors: torch.tensor or None = None,
-                u_input: torch.tensor or None = None,
-                y_last: torch.tensor or None = None):
-        """
-        :param regressors: torch.tensor, BATCH x NUM_REGRESSORS, GP input
-        :param u_input: torch.tensor, BATCH x NUM_INPUTS, system action
-        :param y_last: torch.tensor, BATCH x NUM_STATES, system state
-        :return:
-                 output - gpytorch.distributions.MultitaskMultivariateNormal
-                        - .mean (DATA_LENGTH x NUM_OUTPUTS)
-                        - .stddev (DATA_LENGTH x NUM_OUTPUTS)
-                        - .covariance_matrix (NUM_OUTPUTS * DATA_LENGTH x NUM_OUTPUTS * DATA_LENGTH)
-        """
-        if regressors is None and (u_input is None or y_last is None):
-            raise ValueError("either 'regressors' should be None or both 'u_input' and 'y_last' should be None")
-        elif regressors is not None and (u_input is not None or y_last is not None):
-            raise ValueError("either 'regressors' should be None or both 'u_input' and 'y_last' should be None")
-
-        if regressors is not None:
-            # for training just do predict the model because the input data should be already scaled by
-            output, mean, lower, upper, cov = self.predict_model_step(regressors)
-            return output, mean, lower, upper, cov
-        else:
-            regressors = self.get_regressors(u_input, y_last)
-            output, mean, lower, upper, cov = self.scale_and_predict_model_step(regressors)
-            return output, mean, lower, upper
-
     def set_training_data(self,
                           train_s: torch.tensor or list,
                           train_a: torch.tensor or list,
