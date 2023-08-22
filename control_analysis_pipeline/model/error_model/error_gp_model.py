@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from control_analysis_pipeline.regressor.regressor_factory import RegressorFactory
 from control_analysis_pipeline.utils.normalizer import TorchNormalizer
 import gpytorch
