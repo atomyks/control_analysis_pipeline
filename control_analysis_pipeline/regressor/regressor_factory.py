@@ -136,6 +136,20 @@ class RegressorFactory(nn.Module):
             f = lambda a, s: torch.pow(a[0], 3.0)
             reg.add(f, a_def)
         """
+
+        if a_defs is not None:
+            for def_ in a_defs:
+                k_history, i_action = def_
+                print(self.action_history_size)
+                if abs(k_history) >= self.action_history_size or i_action >= self.num_actions:
+                    raise IndexError("Out of bound")
+
+        if s_defs is not None:
+            for def_ in s_defs:
+                k_history, i_state = def_
+                if abs(k_history) >= self.state_history_size or i_state >= self.num_states:
+                    raise IndexError("Out of bound")
+
         if s_defs is None:
             s_defs = []
         self.regressor_library.append((fun, a_defs, s_defs))
@@ -197,7 +211,6 @@ if __name__ == "__main__":
     a_def = [(-2, 1)]
     f = lambda a, s: torch.pow(a[0], 3.0)
     reg.add(f, a_def)
-
 
     print(reg)
 
