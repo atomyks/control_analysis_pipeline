@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from control_analysis_pipeline.utils.circular_buffer import CircularBuffer
 import inspect
-from typing import Callable
+from typing import Callable, Optional
 
 
 class RegressorFactory(nn.Module):
@@ -20,8 +20,8 @@ class RegressorFactory(nn.Module):
         self.action_history_size = action_history_size
         self.state_history_size = state_history_size
 
-        self.action_history: CircularBuffer or None = None  # (BATCH x HISTORY x NUM_INPUTS)
-        self.state_history: CircularBuffer or None = None  # (BATCH x HISTORY x NUM_INPUTS)
+        self.action_history: Optional[CircularBuffer] = None  # (BATCH x HISTORY x NUM_INPUTS)
+        self.state_history: Optional[CircularBuffer] = None  # (BATCH x HISTORY x NUM_INPUTS)
 
         self.reset_history()
 
@@ -99,8 +99,8 @@ class RegressorFactory(nn.Module):
 
     def add(self,
             fun: Callable,
-            a_defs: list or None = None,
-            s_defs: list or None = None
+            a_defs: Optional[list] = None,
+            s_defs: Optional[list] = None
             ) -> None:
         """
         :param fun: Lambda function that generates regressor element with desired operation.`

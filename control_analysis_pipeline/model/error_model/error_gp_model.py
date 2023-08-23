@@ -4,7 +4,7 @@ from control_analysis_pipeline.model.error_model.error_model import ErrorModel
 from control_analysis_pipeline.utils.normalizer import TorchNormalizer
 import gpytorch
 import gc
-
+from typing import Optional
 
 class BatchIndependentMultitaskGPModel(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood, num_actions, num_states):
@@ -51,9 +51,9 @@ class ErrorGPModel(ErrorModel):
         self.reg.add(new_regressor, a_defs=a_def)
 
     def forward(self,
-                regressors: torch.tensor or None = None,
-                u_input: torch.tensor or None = None,
-                y_last: torch.tensor or None = None):
+                regressors: Optional[torch.tensor] = None,
+                u_input: Optional[torch.tensor] = None,
+                y_last: Optional[torch.tensor] = None):
         """
         :param regressors: torch.tensor, BATCH x NUM_REGRESSORS, GP input
         :param u_input: torch.tensor, BATCH x NUM_INPUTS, system action
@@ -132,3 +132,11 @@ class ErrorGPModel(ErrorModel):
         self.enable_grad_learning(mll)
 
         return train_x_scaled, train_y_scaled
+
+    def get_json_repr(self):
+        '''
+        
+        :return: json representation of the model
+        '''
+        json_repr = super(ErrorGPModel, self).get_json_repr()
+        

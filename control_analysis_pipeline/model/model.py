@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from control_analysis_pipeline.regressor.regressor_factory import RegressorFactory
 from control_analysis_pipeline.model.nongradient_parameter import NongradParameter
+from typing import Optional
 
 class Model(nn.Module):
     """
@@ -38,9 +39,8 @@ class Model(nn.Module):
         self.loss_fn = None
 
         # Non-gradient parameters
-        self._nongrad_params = {}
-        self._nongrad_params_flat = {}
-        self._models = {}
+        self._nongrad_params = dict[str, NongradParameter]()
+        self._models = dict[str, Model]()
 
     def enable_grad_learning(self, loss_function):
         """
@@ -71,8 +71,8 @@ class Model(nn.Module):
 
     def init_regressor_history(self, 
                                batch_size: int = 1,
-                               history_a: torch.tensor or None = None, 
-                               history_s: torch.tensor or None = None):
+                               history_a: Optional[torch.tensor] = None, 
+                               history_s: Optional[torch.tensor] = None):
         '''
         Initializes the history of the regressor. This function is called before each learning iteration.
         :param batch_size: Batch size of the regressor
@@ -92,9 +92,9 @@ class Model(nn.Module):
         self.reg.set_history(history_a, history_s)
         
     def forward(self,
-                regressors: torch.tensor or None = None,
-                a_input: torch.tensor or None = None,
-                y_last: torch.tensor or None = None):
+                regressors: Optional[torch.tensor] = None,
+                a_input: Optional[torch.tensor] = None,
+                y_last: Optional[torch.tensor] = None):
         """
         By default, the model simply returns the regressors. Override this function if you need to do some computation
         :param regressors: torch.tensor, BATCH x NUM_REGRESSORS, model regressors
@@ -130,24 +130,24 @@ class Model(nn.Module):
         '''
         self._models[name] = value
 
-    def gen_nongrad_params_flat(self):
+    def gen_nongrad_params_flat(self) -> dict[str, NongradParameter]:
         '''
         Generates a flattened version of the non-gradient parameters by recursively flattening the submodels.
         :return: Flattened dictionary of non-gradient parameters
         '''
 
-        self._nongrad_params_flat = self._nongrad_params
+        _nongrad_params_flat = self._nongrad_params
         for model_key in list(self._models.keys()):
             submodel_nongrad_params = self._models[model_key].gen_nongrad_params_flat()
             for submodel_key in list(submodel_nongrad_params.keys()):
                 flat_key = model_key + "." + submodel_key
-                self._nongrad_params_flat[flat_key] = submodel_nongrad_params[submodel_key]
-        return self._nongrad_params_flat
+                _nongrad_params_flat[flat_key] = submodel_nongrad_params[submodel_key]
+        return _nongrad_params_flat
 
-    def get_search_space(self):
+    def get_search_space(self) -> (dict[str, torch.tensor], dict[str, NongradParameter]):
         '''
         Generates the search space for the model. This is used by the gradient-free optimizer to search for the optimal parameters.
-        :return: Search space and the parameters
+        :return: Search space and the non-gradient parameters
         '''
 
         search_space = {}
