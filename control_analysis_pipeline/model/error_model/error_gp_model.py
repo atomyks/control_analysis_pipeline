@@ -138,5 +138,20 @@ class ErrorGPModel(ErrorModel):
         
         :return: json representation of the model
         '''
-        return super(ErrorGPModel, self).get_json_repr()
+        # Extract only the parameters used in the forward method for GP inference
+        gp_model_dict = self.gp_model.state_dict()
+        gp_model_dict = {k: v.tolist() for k, v in gp_model_dict.items() if k in ['mean_module.constant', 'covar_module.raw_outputscale', 'covar_module.base_kernel.raw_lengthscale']}
+        gp_likelihood_dict = self.gp_likelihood.state_dict()
+        gp_likelihood_dict = {k: v.tolist() for k, v in gp_likelihood_dict.items() if k in ['raw_noise']}
+        
+        json_dict = super(ErrorGPModel, self).get_json_repr()
+        json_dict['gp_model'] = gp_model_dict
+        json_dict['gp_likelihood'] = gp_likelihood_dict
+        json_dict['scaler_x'] = self.scaler_x.get_json_repr()
+        json_dict['scaler_y'] = self.scaler_y.get_json_repr()
+
+        # Add model data
+        json_dict['model_input_scaled'] = self.scaler_x.transform(self.model_input).tolist()
+        json_dict['model_output_scaled'] = self.scaler_y.transform(self.model_output).tolist()
+        return json_dict
         

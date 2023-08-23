@@ -42,3 +42,10 @@ class TorchNormalizer:
         self.fit(x)
         x = self.transform(x)
         return x
+
+    def get_json_repr(self):
+        return {
+            "means": self.means.tolist(),
+            "stds": self.stds.tolist()
+        }
+    

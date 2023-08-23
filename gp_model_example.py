@@ -108,4 +108,8 @@ if __name__ == "__main__":
     # Save model to json
     json_repr = gp.get_json_repr()
     import json
-    print(json.dumps(json, sort_keys=False, indent=4))
+    print(json.dumps(json_repr, sort_keys=False, indent=4))
+    
+    # Save to file
+    with open('gp_example.json', 'w') as outfile:
+        json.dump(json_repr, outfile, sort_keys=False, indent=4)

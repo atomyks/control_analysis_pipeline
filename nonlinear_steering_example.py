@@ -69,3 +69,6 @@ if __name__ == "__main__":
     json_dict = model.get_json_repr()
     print(json.dumps(json_dict, sort_keys=False, indent=4))
     
+    # Save to file
+    with open('deadzone_example.json', 'w') as outfile:
+        json.dump(json_dict, outfile, sort_keys=False, indent=4)
