@@ -64,7 +64,7 @@ def main():
             u = np.array([[-1.0 * np.sin(0.1 * 0)]])
 
         # Append the initial state to the initial states array
-        initial_states.append(torch.from_numpy(x_init.T).reshape((1, 2)))
+        initial_states.append(torch.from_numpy(x_init.T).flatten())
 
         # Initialize output and input tensors for the simulation as empty tensors
         output_tensor = torch.empty((0, 2), dtype=torch.float64)
@@ -130,11 +130,12 @@ def main():
     #     param.requires_grad = False
     
     tick = time.time()
-    learned_sys.learn_grad(inputs=inputs_arr,
+    learned_sys.learn_base_grad(inputs=inputs_arr,
                            true_outputs=outputs_arr,
                            initial_state=initial_states,
                            batch_size=10,
-                           epochs=100, use_delay=False, use_base_model=True, use_error_model=False)
+                           stop_threshold=1e-5,
+                           epochs=100)
     tock = time.time()
     print('Time taken to learn the model: ', tock - tick)
 
@@ -186,8 +187,8 @@ def main():
         ulearned = -Klearned @ x
         
         # Append the initial state twice to the initial states array
-        initial_states.append(torch.from_numpy(x_init.T).reshape((1, 2)))
-        initial_states.append(torch.from_numpy(x_init.T).reshape((1, 2)))
+        initial_states.append(torch.from_numpy(x_init.T))
+        initial_states.append(torch.from_numpy(x_init.T))
 
         # Initialize output and input tensors for the simulation as empty tensors
         output_tensor = torch.from_numpy(x_init.T).reshape((1, 2))
