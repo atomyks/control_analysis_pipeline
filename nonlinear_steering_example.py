@@ -64,6 +64,8 @@ if __name__ == "__main__":
     for name in list(nongrad_params_flat.keys()):
         nongrad_params_flat[name].set(opt.best_para[name])
 
-    # Print model after optimization
-    print(model)
+    # Visualize model as json
+    import json
+    json_dict = model.get_json_repr()
+    print(json.dumps(json_dict, sort_keys=False, indent=4))
     

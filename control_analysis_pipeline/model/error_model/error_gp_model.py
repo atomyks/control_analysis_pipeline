@@ -138,5 +138,5 @@ class ErrorGPModel(ErrorModel):
         
         :return: json representation of the model
         '''
-        json_repr = super(ErrorGPModel, self).get_json_repr()
+        return super(ErrorGPModel, self).get_json_repr()
         

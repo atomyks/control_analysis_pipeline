@@ -416,8 +416,6 @@ class System:
         if self.delay_model is not None:
             json_dict["delay_model"] = self.delay_model.get_json_repr()
 
-        print(json.dumps(json_dict, sort_keys=True, indent=4))
-
         # Save to file
         with open(file_name, 'w') as outfile:
-            json.dump(json_dict, outfile, sort_keys=True, indent=4)
+            json.dump(json_dict, outfile, sort_keys=False, indent=4)

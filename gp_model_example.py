@@ -104,3 +104,8 @@ if __name__ == "__main__":
     y2_ax.set_title('Observed Values (Likelihood)')
 
     plt.show()
+
+    # Save model to json
+    json_repr = gp.get_json_repr()
+    import json
+    print(json.dumps(json, sort_keys=False, indent=4))

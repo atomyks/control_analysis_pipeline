@@ -22,7 +22,6 @@ class Model(nn.Module):
 
         # Learning toggles, dictates what optimizer is used to train the model
         self.back_prop = False
-        self.nongrad_params = None
 
         # Basic model parameters
         self.num_actions = num_actions
@@ -135,8 +134,11 @@ class Model(nn.Module):
         Generates a flattened version of the non-gradient parameters by recursively flattening the submodels.
         :return: Flattened dictionary of non-gradient parameters
         '''
+        _nongrad_params_flat = dict[str, NongradParameter]()
 
-        _nongrad_params_flat = self._nongrad_params
+        for param_key in list(self._nongrad_params.keys()):
+            _nongrad_params_flat[param_key] = self._nongrad_params[param_key]
+
         for model_key in list(self._models.keys()):
             submodel_nongrad_params = self._models[model_key].gen_nongrad_params_flat()
             for submodel_key in list(submodel_nongrad_params.keys()):
@@ -188,7 +190,10 @@ class Model(nn.Module):
         json_repr["action_history_size"] = self.action_history_size
         json_repr["state_history_size"] = self.state_history_size
         json_repr["back_prop"] = self.back_prop
-        json_repr["nongrad_params"] = self._nongrad_params
+        # Loop over all non-gradient parameters and add their values to the json representation
+        json_repr["nongrad_params"] = {}
+        for param_key in list(self._nongrad_params.keys()):
+            json_repr["nongrad_params"][param_key] = self._nongrad_params[param_key].get().tolist()
         json_repr["models"] = {}
         for model_key in list(self._models.keys()):
             json_repr["models"][model_key] = self._models[model_key].get_json_repr()
