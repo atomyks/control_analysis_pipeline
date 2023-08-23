@@ -1,15 +1,18 @@
-from control_analysis_pipeline.models.delay_models.delay_model import DelayModel
-from control_analysis_pipeline.models.error_models.error_model_demo import ErrorModelDemo
-from control_analysis_pipeline.models.base_models.base_model_linear import BaseLinearModel
-from control_analysis_pipeline.models.base_models.base_model_feedforward import BaseFeedforwardModel
+from control_analysis_pipeline.model.delay_model.delay_model import InputDelayModel
+from control_analysis_pipeline.model.base_model.base_model_linear import BaseLinearModel
 import numpy as np
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
 
+# Enum for model selection
+class ModelType:
+    BASE = 0
+    ERROR = 1
+    DELAY = 2
 
 class System:
-    def __init__(self, loaded_data : dict = None, num_states : int = 1, num_inputs : int = 1, sampling_period : float = 0.01):
+    def __init__(self, loaded_data : dict = None, num_states : int = 1, num_actions : int = 1, sampling_period : float = 0.01):
         if loaded_data is not None:
             self.loaded_data = loaded_data["data"]
         else:
@@ -18,7 +21,7 @@ class System:
         self.training_data = None
         self.testing_data = None
         self.num_states = num_states
-        self.num_inputs = num_inputs
+        self.num_actions = num_actions
 
         if loaded_data is not None:
             self.sampling_period = loaded_data["header"]["sampling_period"]
@@ -28,10 +31,9 @@ class System:
         self.output_data = None
 
         # system delay
-        self.delay_model = DelayModel(batch_size=1, num_inputs=self.num_inputs)
-        self.base_model = BaseLinearModel(num_inputs=self.num_inputs, num_outputs=self.num_states)
-        self.fd_model = BaseFeedforwardModel(num_inputs=self.num_inputs, num_outputs=self.num_states)
-        self.error_model = ErrorModelDemo(num_inputs=self.num_inputs, num_outputs=self.num_states)
+        self.delay_model = InputDelayModel(num_actions=self.num_actions)
+        self.base_model = BaseLinearModel(num_actions=self.num_actions, num_states=self.num_states)
+        self.error_model = None
         self.inputs = None
         self.outputs = None
 
@@ -68,9 +70,10 @@ class System:
         if sim_base_model:
             state_next = self.base_model(u_input, state_now)
         else:
-            state_next = self.fd_model(u_input, state_now)
+            # if we are not simulating the base model, then the base model is just the identity
+            state_next = state_now
 
-        if sim_error_model:
+        if sim_error_model and self.error_model is not None:
             error = self.error_model(u_input, state_now)
         else:
             error = 0.0
@@ -78,7 +81,7 @@ class System:
         state_next = state_next + error
         return state_next
 
-    def simulate(self, input_array: torch.tensor, initial_state: torch.tensor = None, true_state: torch.tensor = None,
+    def simulate(self, input_array: torch.tensor, initial_state: torch.tensor = None,
                  use_delay=True, use_base_model=True, use_error_model=True):
         """
         :param input_array: torch.tensor, (BATCH x TIME x NUM_INPUTS) or (TIME x NUM_INPUTS)
@@ -103,24 +106,14 @@ class System:
             state = initial_state
         else:
             state = torch.zeros((batch_size, self.num_states), dtype=torch.float64)
-        loss = 0
+
         state_array = torch.zeros((batch_size, time_length, self.num_states), dtype=torch.float64)  # BATCH x TIME x STATES
         for t in range(time_length):
             # One-slice t:t+1 allows us to use the same code for batched and unbatched data while preserving correct dimensions
-            state = self.system_step(input_array[..., t:t+1, :], state, use_delay, use_base_model, use_error_model)
-            state_array[..., t:t+1, :] = state
-            if true_state is not None:
-                # if we have more states than the true state, then we only want to compare the first N states
-                num_lossy_states = true_state.shape[-1]
-                # if we are modelling with fewer states than the true state, then we only want to compare the first num_states
-                if num_lossy_states > self.num_states:
-                    num_lossy_states = self.num_states
+            state = self.system_step(input_array[..., t, :], state, use_delay, use_base_model, use_error_model)
+            state_array[..., t, :] = state    
 
-                # One-slice t:t+1 allows us to use the same code for batched and unbatched data while preserving correct dimensions
-                loss += self.loss_fn(state[..., :num_lossy_states], true_state[..., t:t+1, :num_lossy_states])
-                    
-
-        return state_array, loss
+        return state_array
 
     def plot_simulation(self, input_array: torch.tensor, initial_state: torch.tensor = None, true_state: torch.tensor = None,
                         ax : plt.Axes = None, show_hidden_states=True, show_input=True,
@@ -138,7 +131,7 @@ class System:
         state_array = None
         with torch.no_grad():
             # state_array (TIME x STATES)
-            state_array, _ = self.simulate(input_array, 
+            state_array = self.simulate(input_array, 
                                         initial_state=initial_state,
                                         use_delay=use_delay,
                                         use_base_model=use_base_model,
@@ -150,13 +143,13 @@ class System:
             num_observed_states = 0
         else:
             _, num_observed_states = true_state.shape
-        time_length, num_inputs = input_array.shape
+        time_length, num_actions = input_array.shape
 
         if ax is None:
             fig, ax = plt.subplots()
 
         if show_input:
-            for i in range(num_inputs):
+            for i in range(num_actions):
                 label = f"Input: {self.inputs[i]}"
                 time_axis = np.arange(0, time_length, 1) * self.sampling_period
                 ax.plot(time_axis, input_array[:, i], drawstyle='steps-pre', label=label)
@@ -234,16 +227,36 @@ class System:
     # def learn_no_grad(self, subsystem):
     #     pass
 
-    def learn_grad(self, inputs: torch.tensor, true_outputs: torch.tensor, initial_state: torch.tensor = None, 
-                   batch_size: int = None, optimizer: torch.optim = torch.optim.SGD, learning_rate: int = 0.01,
-                   stop_threshold=1e-15, epochs=100, use_delay=True, use_base_model=True, use_error_model=True):
-        
+    def init_learning(self, batch_size):
+        self.delay_model.init_learning(batch_size)
+        self.base_model.init_learning()
+
+    def learn_delay(self, inputs: torch.tensor, true_outputs: torch.tensor, initial_state: torch.tensor = None, 
+                            batch_size: int = None, optimizer: torch.optim = torch.optim.SGD, learning_rate: int = 0.01,
+                            epochs: int = 100, stop_threshold: float = 0.01):  
+        raise NotImplementedError("learn_delay is not implemented")
+    
+    def learn_error_grad(self, inputs: torch.tensor, true_outputs: torch.tensor, initial_state: torch.tensor = None, 
+                            batch_size: int = None, optimizer: torch.optim = torch.optim.SGD, learning_rate: int = 0.01,
+                            epochs: int = 100, stop_threshold: float = 0.01):  
+        raise NotImplementedError("learn_base_grad is not implemented")
+    
+    def learn_base_grad(self, inputs: torch.tensor, true_outputs: torch.tensor, initial_state: torch.tensor = None, 
+                        batch_size: int = None, optimizer: torch.optim = torch.optim.SGD, learning_rate: int = 0.01,
+                        epochs: int = 100, stop_threshold: float = 0.01):  
+
+        # Check if base model is defined
+        if self.base_model is None:
+            raise ValueError("Base model is not defined")
+                  
         # Check if data is provided, raise error if not
         if true_outputs is None:
             raise ValueError("No true outputs provided")
         if inputs is None:
             raise ValueError("No inputs provided")
-
+        if true_outputs is None and initial_state is None:
+            raise ValueError("An initial state must be provided if no true outputs are.")
+        
         # Check that all lists are of the same length
         if len(inputs) != len(true_outputs):
             raise ValueError("Input and output lists must be of the same length")
@@ -269,30 +282,9 @@ class System:
             
             # Check if initial state is provided, if so, check that it is only one state
             if initial_state is not None:
-                if initial_state[i].shape[0] != 1:
-                    raise ValueError("Initial state must be a single state")
-                if initial_state[i].shape[1] != self.num_states:
+                if initial_state[i].shape[0] != self.num_states:
                     raise ValueError("Initial state must be of the same size as the number of states")
                     
-        params = []
-        if use_base_model:
-            self.base_model.train()
-            params += list(self.base_model.parameters())
-        else:
-            self.base_model.eval()
-
-        if use_error_model:
-            self.error_model.train()
-            params += list(self.error_model.parameters())
-        else:
-            self.error_model.eval()
-        
-        if len(params) == 0:
-            print("No parameters to optimize")
-            return
-        
-        optim = optimizer(params, lr=learning_rate)
-
         # Create list of initial states for each bag of data of size 1 x num_states
         if initial_state is None:
             initial_state = []
@@ -300,18 +292,16 @@ class System:
                 # Pad initial state with zeros if it is smaller than the number of states
                 for true_output in true_outputs:
                     init_state = torch.zeros((1, self.num_states), dtype=torch.float64)
-                    init_state[:, :true_outputs[0].shape[1]] = true_output[0].reshape((1, -1))
+                    init_state[:, :true_outputs[0].shape[1]] = true_output[0]
                     initial_state.append(init_state)
             else:
                 # Construct initial state by concatenating all initial states
-                initial_state =  [true_output[0].reshape((1, -1)) for true_output in true_outputs]
+                initial_state =  [true_output[0] for true_output in true_outputs]
             # Then remove the first element from each true output
             true_outputs = [true_output[1:] for true_output in true_outputs]
             # Only fix inputs if they are of equal length to outputs
             if is_equal_length:
                 inputs = [input_[1:] for input_ in inputs]
-            
-        print("Learning started")
     
         NUM_SIGNALS = len(inputs)
         batched_inputs = []
@@ -338,12 +328,34 @@ class System:
             batched_true_outputs = true_outputs
             batched_initial_state = initial_state
             
+        self.init_learning(batch_size)
+
+        print("Learning started")
+        params = []
+        self.base_model.train()
+        params += list(self.base_model.parameters())
+        optim = optimizer(params, lr=learning_rate)
+        loss_func = self.base_model.loss_fn
+    
+        if self.error_model is not None:
+            self.error_model.eval()
+
         for epoch in range(epochs):
             print("------")
             loss_above_threshold = False
             for i in range(len(batched_inputs)):
                 optim.zero_grad()
-                _, loss = self.simulate(batched_inputs[i], batched_initial_state[i], batched_true_outputs[i], use_delay, use_base_model, use_error_model)
+                state_array = self.simulate(batched_inputs[i], batched_initial_state[i], True, True, True)
+                loss = 0.0
+                # if we have more states than the true state, then we only want to compare the first N states
+                num_lossy_states = batched_true_outputs[i].shape[-1]
+                # if we are modelling with fewer states than the true state, then we only want to compare the first num_states
+                if num_lossy_states > self.num_states:
+                    num_lossy_states = self.num_states
+
+                # One-slice t:t+1 allows us to use the same code for batched and unbatched data while preserving correct dimensions
+                loss += loss_func(state_array[..., :num_lossy_states], batched_true_outputs[i][..., :num_lossy_states])
+                
                 if loss > stop_threshold:
                     loss_above_threshold = True
                 # print loss and iteration number

@@ -1,10 +1,12 @@
 import torch
 import torch.nn as nn
-from control_analysis_pipeline.functional.base_functional import BaseNongradModel
-from control_analysis_pipeline.functional.nongradient_parameter import NongradParameter
+from control_analysis_pipeline.model.model import Model
+from control_analysis_pipeline.model.nongradient_parameter import NongradParameter
 
-
-class Deadzone(BaseNongradModel):
+class Deadzone(Model):
+    """
+    Deadzone model. Inherits from Model class, but only uses the non-gradient parameters.
+    """
 
     def __init__(self):
         super(Deadzone, self).__init__()

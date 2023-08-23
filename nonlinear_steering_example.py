@@ -2,11 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import queue
-from control_analysis_pipeline.functional.base_functional import BaseNongradModel
+from control_analysis_pipeline.model.model import Model
 from control_analysis_pipeline.functional.deadzone import Deadzone
 
 
-class NonlinearSteering(BaseNongradModel):
+class NonlinearSteering(Model):
     def __init__(self):
         super(NonlinearSteering, self).__init__()
 
@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     def objective_function(para):
         loss = 0.0
-        for name in model.get_nongrad_param_names():
+        for name in list(nongrad_params_flat.keys()):
             nongrad_params_flat[name].set(para[name])
         for input, target in dataset:
             y = model(input)
@@ -59,4 +59,11 @@ if __name__ == "__main__":
     from gradient_free_optimizers import EvolutionStrategyOptimizer
 
     opt = EvolutionStrategyOptimizer(search_space)
-    opt.search(objective_function, n_iter=10000)
+    opt.search(objective_function, n_iter=1000)
+
+    for name in list(nongrad_params_flat.keys()):
+        nongrad_params_flat[name].set(opt.best_para[name])
+
+    # Print model after optimization
+    print(model)
+    
