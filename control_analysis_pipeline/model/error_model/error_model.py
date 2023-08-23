@@ -1,13 +1,25 @@
 import torch
 from control_analysis_pipeline.model.model import Model
 
+
 class ErrorModel(Model):
     """
     Base class for error models. Inherits from Model class, and has unique forward method.
+    Error model takes action and state output of the base model and estimates prediction error of base model.
+
+    action  ###############
+    ------->#             #  error
+    state   # error model #-------->
+    ------->#             #
+            ###############
+
     """
 
     def __init__(self, num_actions=1, num_states=1, action_history_size=1, state_history_size=1):
-        super(ErrorModel, self).__init__(num_actions=num_actions, num_states=num_states, action_history_size=action_history_size, state_history_size=state_history_size)
+        super(ErrorModel, self).__init__(num_actions=num_actions, num_states=num_states,
+                                         action_history_size=action_history_size, state_history_size=state_history_size)
+        self.model_input = None
+        self.model_output = None
 
     def set_training_data(self,
                           train_s: torch.tensor or list,
@@ -16,9 +28,9 @@ class ErrorModel(Model):
         """
 
         Note: BATCH dimension can be either list or torch.tensor. DATA and last  dimension needs to be torch.tensor.
-        :param train_s: (BATCH x DATA_LENGTH x NUM_STATES)
-        :param train_a: (BATCH x DATA_LENGTH x NUM_ACTIONS)
-        :param train_e: (BATCH x DATA_LENGTH x NUM_STATES)
+        :param train_s: States array. (BATCH x DATA_LENGTH x NUM_STATES)
+        :param train_a: Action array. (BATCH x DATA_LENGTH x NUM_ACTIONS)
+        :param train_e: Error array. (BATCH x DATA_LENGTH x NUM_STATES)
         :return:
         """
         if type(train_s) == list:
@@ -39,8 +51,6 @@ class ErrorModel(Model):
         # data needs to be synchronized at all time -> we need to take the same history size from both signals
         required_history = max(self.action_history_size, self.state_history_size)
 
-        self.model_input = None
-        self.model_output = None
         idx = 0
 
         # needs to be done iteratively to support list on the input
