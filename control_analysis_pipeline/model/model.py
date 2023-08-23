@@ -111,6 +111,12 @@ class Model(nn.Module):
         '''
         pass
 
+    def reset_history(self):
+        self.reg.reset_history()
+
+    def set_history(self, action_history: torch.tensor, state_history: torch.tensor):
+        self.reg.set_history(action_history, state_history)
+
     def register_nongrad_parameter(self, name, value):
         '''
         Registers a non-gradient parameter. This is optimized using a gradient-free optimizer.
