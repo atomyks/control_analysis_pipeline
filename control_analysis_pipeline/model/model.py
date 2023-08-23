@@ -1,6 +1,8 @@
+from __future__ import annotations
 import torch
 import torch.nn as nn
 from control_analysis_pipeline.regressor.regressor_factory import RegressorFactory
+from control_analysis_pipeline.model.nongradient_parameter import NongradParameter
 
 class Model(nn.Module):
     """
@@ -110,7 +112,7 @@ class Model(nn.Module):
         '''
         pass
 
-    def register_nongrad_parameter(self, name, value):
+    def register_nongrad_parameter(self, name:str, value:NongradParameter):
         '''
         Registers a non-gradient parameter. This is optimized using a gradient-free optimizer.
         :param name: Name of the parameter
@@ -119,7 +121,7 @@ class Model(nn.Module):
         '''
         self._nongrad_params[name] = value
 
-    def register_model(self, name, value):
+    def register_model(self, name:str, value:Model):
         '''
         Registers a model. This allows for layered models.
         :param name: Name of the model
@@ -174,3 +176,22 @@ class Model(nn.Module):
         report += f"Nongrad params: {self._nongrad_params.keys()}\n"
         report += f"Registered models: {self._models.keys()}\n"
         return report
+    
+    def get_json_repr(self):
+        '''
+        Gets json representation of the model as a dictionary. This is used for saving the model.
+        Overload this function if you need to save additional parameters.
+        :return: Dictionary representation of the model of format {param_name: param_value}
+        '''
+        json_repr = {}
+        json_repr["type"] = self.__class__.__name__
+        json_repr["num_actions"] = self.num_actions
+        json_repr["num_states"] = self.num_states
+        json_repr["action_history_size"] = self.action_history_size
+        json_repr["state_history_size"] = self.state_history_size
+        json_repr["back_prop"] = self.back_prop
+        json_repr["nongrad_params"] = self._nongrad_params
+        json_repr["models"] = {}
+        for model_key in list(self._models.keys()):
+            json_repr["models"][model_key] = self._models[model_key].get_json_repr()
+        return json_repr

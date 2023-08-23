@@ -4,6 +4,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
+import json
+import os
 
 # Enum for model selection
 class ModelType:
@@ -31,7 +33,7 @@ class System:
         self.output_data = None
 
         # system delay
-        self.delay_model = InputDelayModel(num_actions=self.num_actions)
+        self.delay_model = None
         self.base_model = BaseLinearModel(num_actions=self.num_actions, num_states=self.num_states)
         self.error_model = None
         self.inputs = None
@@ -64,20 +66,19 @@ class System:
 
     def system_step(self, u_input: torch.tensor, state_now: torch.tensor,
                     sim_delay=True, sim_base_model=True, sim_error_model=True) -> (torch.tensor, torch.tensor):
-        if sim_delay:
+        
+        if sim_delay and self.delay_model is not None:
             u_input = self.delay_model(u_input)
 
+        # if we are not simulating the base model, then the base model is just the identity
+        state_next = state_now
         if sim_base_model:
             state_next = self.base_model(u_input, state_now)
-        else:
-            # if we are not simulating the base model, then the base model is just the identity
-            state_next = state_now
-
+            
+        error = 0.0
         if sim_error_model and self.error_model is not None:
             error = self.error_model(u_input, state_now)
-        else:
-            error = 0.0
-
+            
         state_next = state_next + error
         return state_next
 
@@ -228,7 +229,8 @@ class System:
     #     pass
 
     def init_learning(self, batch_size):
-        self.delay_model.init_learning(batch_size)
+        if self.delay_model is not None:
+            self.delay_model.init_learning(batch_size)
         self.base_model.init_learning()
 
     def learn_delay(self, inputs: torch.tensor, true_outputs: torch.tensor, initial_state: torch.tensor = None, 
@@ -386,3 +388,36 @@ class System:
                 self.training_data.append(self.loaded_data[i])
             else:
                 self.testing_data.append(self.loaded_data[i])
+
+    def save_to_json(self, file_name):
+
+        # Check if folder path exists, raise error if it does not
+        file_path = os.path.dirname(file_name)
+        if file_path == '':
+            file_path = '.'
+        if not os.path.exists(file_path):
+            raise ValueError("Folder path does not exist")        
+
+        # Check if file exists, raise error if it does
+        if os.path.isfile(file_name):
+            raise ValueError("File already exists")
+        
+        json_dict = {}
+
+        json_dict["num_states"] = self.num_states
+        json_dict["num_actions"] = self.num_actions
+
+        json_dict["sampling_period"] = self.sampling_period
+
+        if self.base_model is not None:
+            json_dict["base_model"] = self.base_model.get_json_repr()
+        if self.error_model is not None:
+            json_dict["error_model"] = self.error_model.get_json_repr()
+        if self.delay_model is not None:
+            json_dict["delay_model"] = self.delay_model.get_json_repr()
+
+        print(json.dumps(json_dict, sort_keys=True, indent=4))
+
+        # Save to file
+        with open(file_name, 'w') as outfile:
+            json.dump(json_dict, outfile, sort_keys=True, indent=4)

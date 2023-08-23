@@ -232,5 +232,8 @@ def main():
     plt.title('Simulated trajectories')
     plt.show()
 
+    # Save the learned model
+    learned_sys.save_to_json('learned_model.json')
+    
 if __name__ == "__main__":
     main()
