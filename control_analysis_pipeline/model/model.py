@@ -163,16 +163,14 @@ class Model(nn.Module):
         String operator overload for printing the model to the console.
         :return: String representation of the model
         '''
-        str_out = str(self.reg)
-        str_out += "\n"
-        str_out += super(Model, self).__str__()
-        str_out += "\n----------------------------------\n"
-        str_out += f"Nongrad params: {self._nongrad_params.keys()}\n"
-        str_out += f"Registered models: {self._models.keys()}\n"
+        str_out = super(Model, self).__str__()
         return str_out
 
     def __repr__(self):
-        report = "\n----------------------------------\n"
+        report = self.reg.__repr__()
+        report += "\n"
+        report += super(Model, self).__repr__()
+        report += "\n----------------------------------\n"
         report += f"Nongrad params: {self._nongrad_params.keys()}\n"
         report += f"Registered models: {self._models.keys()}\n"
         return report
