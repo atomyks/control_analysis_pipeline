@@ -59,10 +59,12 @@ class InputDelayModel(Model):
         else:
             raise ValueError('dimension mismatch')
 
-        if (not BATCH_SIZE == self.batch_size or
-                not HISTORY_SIZE == self.delay_parm.get() or
-                not NUM_ACTIONS == self.num_actions):
-            raise ValueError('dimension mismatch')
+        if not BATCH_SIZE == self.batch_size:
+            raise ValueError(f'dimension mismatch {BATCH_SIZE} and {self.batch_size}')
+        if not HISTORY_SIZE == self.delay_parm.get():
+            raise ValueError(f'dimension mismatch {HISTORY_SIZE} and {self.delay_parm.get()}')
+        if not NUM_ACTIONS == self.num_actions:
+            raise ValueError(f'dimension mismatch {NUM_ACTIONS} and {self.num_actions}')
 
         self.input_queue = queue.Queue(maxsize=self.delay_parm.get())
 

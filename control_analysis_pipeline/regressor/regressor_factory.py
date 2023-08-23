@@ -81,9 +81,10 @@ class RegressorFactory(nn.Module):
         current_action_history_shape = torch.tensor([self.batch_size, self.action_history_size, self.num_actions])
         current_state_history_shape = torch.tensor([self.batch_size, self.state_history_size, self.num_states])
         if not torch.equal(torch.tensor(action_history.shape), current_action_history_shape):
-            raise ValueError('dimension mismatch')
+            print(self.action_history_size)
+            raise ValueError(f'dimension mismatch: {action_history.shape} and {current_action_history_shape}')
         if not torch.equal(torch.tensor(state_history.shape), current_state_history_shape):
-            raise ValueError('dimension mismatch')
+            raise ValueError(f'dimension mismatch: {state_history.shape} and {current_state_history_shape}')
 
         self.action_history = CircularBuffer(action_history, dim=1)
         self.state_history = CircularBuffer(state_history, dim=1)
