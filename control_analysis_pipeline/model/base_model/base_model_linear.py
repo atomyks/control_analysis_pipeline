@@ -9,7 +9,7 @@ class BaseLinearModel(Model):
     """
 
     def __init__(self, num_actions=1, num_states=1):
-        super(BaseLinearModel, self).__init__(num_action=num_actions, num_states=num_states)
+        super(BaseLinearModel, self).__init__(num_actions=num_actions, num_states=num_states)
         self.enable_grad_learning(nn.MSELoss())
 
         self.A = nn.Linear(num_states, num_states, bias=False, dtype=torch.double)

@@ -12,6 +12,7 @@ class InputDelayModel(Model):
         self.delay_parm = NongradParameter("delay", 0, 10, 1)
         self.register_nongrad_parameter("delay", self.delay_parm)
         self.batch_size = 1
+        self.delay_parm.set(0)
 
     def init_learning(self, batch_size):
         '''

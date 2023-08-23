@@ -1,4 +1,4 @@
-from control_analysis_pipeline.model.delay_model.delay_model import DelayModel
+from control_analysis_pipeline.model.delay_model.delay_model import InputDelayModel
 from control_analysis_pipeline.model.base_model.base_model_linear import BaseLinearModel
 import numpy as np
 import torch
@@ -26,7 +26,7 @@ class System:
         self.output_data = None
 
         # system delay
-        self.delay_model = DelayModel(batch_size=1, num_actions=self.num_actions)
+        self.delay_model = InputDelayModel(num_actions=self.num_actions)
         self.base_model = BaseLinearModel(num_actions=self.num_actions, num_states=self.num_states)
         self.error_model = None
         self.inputs = None
@@ -101,24 +101,14 @@ class System:
             state = initial_state
         else:
             state = torch.zeros((batch_size, self.num_states), dtype=torch.float64)
-        loss = 0
+
         state_array = torch.zeros((batch_size, time_length, self.num_states), dtype=torch.float64)  # BATCH x TIME x STATES
         for t in range(time_length):
             # One-slice t:t+1 allows us to use the same code for batched and unbatched data while preserving correct dimensions
             state = self.system_step(input_array[..., t:t+1, :], state, use_delay, use_base_model, use_error_model)
-            state_array[..., t:t+1, :] = state
-            if true_state is not None:
-                # if we have more states than the true state, then we only want to compare the first N states
-                num_lossy_states = true_state.shape[-1]
-                # if we are modelling with fewer states than the true state, then we only want to compare the first num_states
-                if num_lossy_states > self.num_states:
-                    num_lossy_states = self.num_states
+            state_array[..., t:t+1, :] = state    
 
-                # One-slice t:t+1 allows us to use the same code for batched and unbatched data while preserving correct dimensions
-                loss += self.loss_fn(state[..., :num_lossy_states], true_state[..., t:t+1, :num_lossy_states])
-                    
-
-        return state_array, loss
+        return state_array
 
     def plot_simulation(self, input_array: torch.tensor, initial_state: torch.tensor = None, true_state: torch.tensor = None,
                         ax : plt.Axes = None, show_hidden_states=True, show_input=True,
@@ -136,7 +126,7 @@ class System:
         state_array = None
         with torch.no_grad():
             # state_array (TIME x STATES)
-            state_array, _ = self.simulate(input_array, 
+            state_array = self.simulate(input_array, 
                                         initial_state=initial_state,
                                         use_delay=use_delay,
                                         use_base_model=use_base_model,
@@ -345,7 +335,18 @@ class System:
             loss_above_threshold = False
             for i in range(len(batched_inputs)):
                 optim.zero_grad()
-                _, loss = self.simulate(batched_inputs[i], batched_initial_state[i], batched_true_outputs[i], use_delay, use_base_model, use_error_model)
+                state_array = self.simulate(batched_inputs[i], batched_initial_state[i], batched_true_outputs[i], use_delay, use_base_model, use_error_model)
+                loss = 0.0
+                # if we have more states than the true state, then we only want to compare the first N states
+                num_lossy_states = batched_true_outputs[i].shape[-1]
+                # if we are modelling with fewer states than the true state, then we only want to compare the first num_states
+                if num_lossy_states > self.num_states:
+                    num_lossy_states = self.num_states
+
+                loss_func = nn.MSELoss()
+                # One-slice t:t+1 allows us to use the same code for batched and unbatched data while preserving correct dimensions
+                loss += loss_func(state_array[..., :num_lossy_states], batched_true_outputs[i][..., :num_lossy_states])
+                
                 if loss > stop_threshold:
                     loss_above_threshold = True
                 # print loss and iteration number
