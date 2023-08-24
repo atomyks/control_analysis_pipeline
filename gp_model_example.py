@@ -20,7 +20,7 @@ if __name__ == "__main__":
     ], -1).reshape((100, 2))
 
     # set model
-    gp = ErrorGPModel(num_actions=1, num_states=2)
+    gp = ErrorGPModel(num_actions=1, num_states=2, num_errors=2)
 
     print(gp)
 
