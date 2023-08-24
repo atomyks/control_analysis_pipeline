@@ -36,8 +36,8 @@ def main():
     sys.parse_config(config)
 
     # Double integrator system
-    sys.set_linear_model_matrices(A=torch.tensor([[0, 0.5], [-0.5, 0]], dtype=torch.float64),
-                                  B=torch.tensor([[0], [0.1]], dtype=torch.float64))
+    sys.set_linear_model_matrices(A=torch.tensor([[0, 0.5], [-0.5, 0]]),
+                                  B=torch.tensor([[0], [0.1]]))
 
     # Simulate the system closed loop with LQR controller (no delay)
     # Simulation ends when the state is within 1e-15 of the origin
@@ -67,8 +67,8 @@ def main():
         initial_states.append(torch.from_numpy(x_init.T).flatten())
 
         # Initialize output and input tensors for the simulation as empty tensors
-        output_tensor = torch.empty((0, 2), dtype=torch.float64)
-        input_tensor = torch.empty((0, 1), dtype=torch.float64)
+        output_tensor = torch.empty((0, 2))
+        input_tensor = torch.empty((0, 1))
         
         for i in range(simulation_horizon):
             if learn_with_controller:
@@ -192,7 +192,7 @@ def main():
 
         # Initialize output and input tensors for the simulation as empty tensors
         output_tensor = torch.from_numpy(x_init.T).reshape((1, 2))
-        input_tensor = torch.empty((0, 1), dtype=torch.float64)
+        input_tensor = torch.empty((0, 1))
 
         while np.linalg.norm(xbase) > 1e-1:
             ubase = -Kbase @ xbase

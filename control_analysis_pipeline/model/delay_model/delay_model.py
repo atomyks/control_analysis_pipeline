@@ -43,7 +43,7 @@ class InputDelayModel(Model):
     def reset(self):
         self.input_queue = queue.Queue(maxsize=self.delay_parm.get())
         for i in range(self.delay_parm.get()):
-            u = torch.zeros((self.batch_size, self.num_actions), dtype=torch.float64)
+            u = torch.zeros((self.batch_size, self.num_actions))
             self.input_queue.put(u)
 
     def set_history(self, history: torch.tensor):

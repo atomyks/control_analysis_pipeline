@@ -105,9 +105,12 @@ class System:
         if initial_state is not None:
             state = initial_state
         else:
-            state = torch.zeros((batch_size, self.num_states), dtype=torch.float64)
+            state = torch.zeros((batch_size, self.num_states))
 
-        state_array = torch.zeros((batch_size, time_length, self.num_states), dtype=torch.float64)  # BATCH x TIME x STATES
+        action_delayed_array = torch.zeros((batch_size, time_length, self.num_actions))
+        state_array = torch.zeros((batch_size, time_length, self.num_states))  # BATCH x TIME x STATES
+        error_array = torch.zeros((batch_size, time_length, self.num_states))
+
         for t in range(time_length):
             # One-slice t:t+1 allows us to use the same code for batched and unbatched data while preserving correct dimensions
             state = self.system_step(input_array[..., t, :], state, use_delay, use_base_model, use_error_model)
@@ -291,7 +294,7 @@ class System:
             if self.num_states > true_outputs[0].shape[1]:
                 # Pad initial state with zeros if it is smaller than the number of states
                 for true_output in true_outputs:
-                    init_state = torch.zeros((1, self.num_states), dtype=torch.float64)
+                    init_state = torch.zeros((1, self.num_states))
                     init_state[:, :true_outputs[0].shape[1]] = true_output[0]
                     initial_state.append(init_state)
             else:
