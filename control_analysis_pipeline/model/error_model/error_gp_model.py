@@ -7,13 +7,13 @@ import gc
 
 
 class BatchIndependentMultitaskGPModel(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood, num_actions, num_states):
+    def __init__(self, train_x, train_y, likelihood, num_actions, num_error_dim):
         super().__init__(train_x, train_y, likelihood)
-        self.mean_module = gpytorch.means.ConstantMean(batch_shape=torch.Size([num_states]))
+        self.mean_module = gpytorch.means.ConstantMean(batch_shape=torch.Size([num_error_dim]))
         self.covar_module = gpytorch.kernels.ScaleKernel(
-            # gpytorch.kernels.PeriodicKernel(batch_shape=torch.Size([num_states]), ard_num_dims=num_actions) +
-            gpytorch.kernels.RBFKernel(batch_shape=torch.Size([num_states]), ard_num_dims=num_actions),
-            batch_shape=torch.Size([num_states])
+            # gpytorch.kernels.PeriodicKernel(batch_shape=torch.Size([num_error_dim]), ard_num_dims=num_actions) +
+            gpytorch.kernels.RBFKernel(batch_shape=torch.Size([num_error_dim]), ard_num_dims=num_actions),
+            batch_shape=torch.Size([num_error_dim])
 
         )
 
@@ -30,16 +30,19 @@ class ErrorGPModel(ErrorModel):
     Similar to https://pytorch.org/tutorials/beginner/former_torchies/nnft_tutorial.html
     """
 
-    def __init__(self, num_actions=1, num_states=1, action_history_size=1, state_history_size=1):
-        super(ErrorGPModel, self).__init__(num_actions=num_actions, num_states=num_states, action_history_size=action_history_size, state_history_size=state_history_size)
+    def __init__(self, num_actions=1, num_states=1, num_errors=1, action_history_size=1, state_history_size=1):
+        super(ErrorGPModel, self).__init__(num_actions=num_actions, num_states=num_states, num_errors=num_errors,
+                                           action_history_size=action_history_size,
+                                           state_history_size=state_history_size)
 
-        self.gp_likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=self.num_states)
+        self.gp_likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=self.num_errors)
         self.gp_model = BatchIndependentMultitaskGPModel(None, None, self.gp_likelihood,
-                                                         num_actions=self.regressor_size(), num_states=self.num_states)
+                                                         num_actions=self.regressor_size(),
+                                                         num_error_dim=self.num_errors)
         self.init_lengthscale = 0.1
         
         self.scaler_x = TorchNormalizer(num_of_normalizers=self.num_actions)
-        self.scaler_y = TorchNormalizer(num_of_normalizers=self.num_states)
+        self.scaler_y = TorchNormalizer(num_of_normalizers=self.num_errors)
 
         # Add basic regressors
         s_def = [(0, 0)]
@@ -121,9 +124,10 @@ class ErrorGPModel(ErrorModel):
             del self.gp_model
             gc.collect()
 
-        self.gp_likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=self.num_states)
+        self.gp_likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=self.num_errors)
         self.gp_model = BatchIndependentMultitaskGPModel(train_x_scaled, train_y_scaled, self.gp_likelihood,
-                                                         num_actions=self.regressor_size(), num_states=self.num_states)
+                                                         num_actions=self.regressor_size(),
+                                                         num_error_dim=self.num_errors)
 
         self.gp_model.covar_module.base_kernel.lengthscale = self.init_lengthscale
 

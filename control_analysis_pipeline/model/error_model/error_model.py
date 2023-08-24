@@ -15,11 +15,12 @@ class ErrorModel(Model):
 
     """
 
-    def __init__(self, num_actions=1, num_states=1, action_history_size=1, state_history_size=1):
+    def __init__(self, num_actions=1, num_states=1, num_errors=1, action_history_size=1, state_history_size=1):
         super(ErrorModel, self).__init__(num_actions=num_actions, num_states=num_states,
                                          action_history_size=action_history_size, state_history_size=state_history_size)
         self.model_input = None
         self.model_output = None
+        self.num_errors = num_errors
 
     def set_training_data(self,
                           train_s: torch.tensor or list,
@@ -30,7 +31,7 @@ class ErrorModel(Model):
         Note: BATCH dimension can be either list or torch.tensor. DATA and last  dimension needs to be torch.tensor.
         :param train_s: States array. (BATCH x DATA_LENGTH x NUM_STATES)
         :param train_a: Action array. (BATCH x DATA_LENGTH x NUM_ACTIONS)
-        :param train_e: Error array. (BATCH x DATA_LENGTH x NUM_STATES)
+        :param train_e: Error array. (BATCH x DATA_LENGTH x NUM_OBSERVED_STATES)
         :return:
         """
         if type(train_s) == list:
@@ -61,13 +62,12 @@ class ErrorModel(Model):
             train_a_single = train_a[i]
             data_length_a, num_actions = train_a_single.shape
             train_e_single = train_e[i]
-            data_length_out, num_states = train_e_single.shape
+            data_length_out, num_observed_states = train_e_single.shape
 
             # check dimensions of the current data signal
             if not (data_length_s == data_length_a == data_length_out):
                 raise ValueError('dimension mismatch')
-            if (not num_states == self.num_states) or (not num_actions == self.num_actions) or (
-                    not num_states == self.num_states):
+            if (not num_states == self.num_states) or (not num_actions == self.num_actions):
                 raise ValueError('dimension mismatch')
 
             data_length = data_length_s  # since all of them should be the same it does not matter which one we take
@@ -79,10 +79,10 @@ class ErrorModel(Model):
                     (self.model_input, torch.zeros((data_length - required_history, self.regressor_size()))
                      ), dim=0)
             if self.model_output is None:
-                self.model_output = torch.zeros((data_length - required_history, self.num_states))
+                self.model_output = torch.zeros((data_length - required_history, num_observed_states))
             else:
                 self.model_output = torch.cat(
-                    (self.model_output, torch.zeros((data_length - required_history, self.num_states))
+                    (self.model_output, torch.zeros((data_length - required_history, num_observed_states))
                      ), dim=0)
 
             # set start and end of the history correctly for all signals
