@@ -6,6 +6,7 @@ from control_analysis_pipeline.system.system import System
 import torch
 import matplotlib.pyplot as plt
 
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -49,13 +50,13 @@ def main():
     print('Learned B: ', sys.base_model.B.weight)
 
     # Plot simulation results of first 2 bags of data
-    fig, axs = plt.subplots(1,2)
-    for bag_idx, ax  in enumerate(axs.ravel()):
+    fig, axs = plt.subplots(1, 2)
+    for bag_idx, ax in enumerate(axs.ravel()):
         input_arr = torch.from_numpy(sys.loaded_data[bag_idx][sys.inputs[0]]).reshape(
             (sys.loaded_data[bag_idx][sys.inputs[0]].shape[0], 1))
         output_arr = torch.from_numpy(sys.loaded_data[bag_idx][sys.outputs[0]]).reshape(
             (sys.loaded_data[bag_idx][sys.outputs[0]].shape[0], 1))
-        
+
         sys.plot_simulation(input_array=input_arr,
                             true_state=output_arr,
                             ax=ax, show_input=True, show_hidden_states=False,

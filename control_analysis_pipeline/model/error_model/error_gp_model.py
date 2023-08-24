@@ -40,7 +40,7 @@ class ErrorGPModel(ErrorModel):
                                                          num_actions=self.regressor_size(),
                                                          num_error_dim=self.num_errors)
         self.init_lengthscale = 0.1
-        
+
         self.scaler_x = TorchNormalizer(num_of_normalizers=self.num_actions)
         self.scaler_y = TorchNormalizer(num_of_normalizers=self.num_errors)
 
@@ -79,12 +79,11 @@ class ErrorGPModel(ErrorModel):
         else:
             regressors = self.get_regressors(u_input, y_last)
             output, mean, lower, upper, cov = self.scale_and_predict_model_step(regressors)
-            return output, mean, lower, upper
+            return output, mean, lower, upper  # , cov
 
     def scale_and_predict_model_step(self, gp_input):
 
         point = self.scaler_x.transform(gp_input)
-
         output, normalized_mean, normalized_lower, normalized_upper, cov = self.predict_model_step(point)
 
         if len(normalized_lower.shape) == 1:
@@ -102,6 +101,7 @@ class ErrorGPModel(ErrorModel):
         :param gp_input_normalized:
         :return: model error prediction
         """
+
         output = self.gp_likelihood(self.gp_model(gp_input_normalized))
         confidence = output.confidence_region()
         return output, output.mean, torch.squeeze(confidence[0]), torch.squeeze(
@@ -112,7 +112,6 @@ class ErrorGPModel(ErrorModel):
         train_y = self.model_output  # (DATA_LENGTH x NUM_OUTPUTS)
 
         train_x_scaled = self.scaler_x.fit_transform(train_x)
-
         train_y_scaled = self.scaler_y.fit_transform(train_y)
         train_y_scaled = train_y_scaled.contiguous()
 

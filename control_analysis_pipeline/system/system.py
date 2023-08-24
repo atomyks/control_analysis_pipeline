@@ -5,14 +5,17 @@ import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
 
+
 # Enum for model selection
 class ModelType:
     BASE = 0
     ERROR = 1
     DELAY = 2
 
+
 class System:
-    def __init__(self, loaded_data : dict = None, num_states : int = 1, num_actions : int = 1, sampling_period : float = 0.01):
+    def __init__(self, loaded_data: dict = None, num_states: int = 1, num_actions: int = 1,
+                 sampling_period: float = 0.01):
         if loaded_data is not None:
             self.loaded_data = loaded_data["data"]
         else:
@@ -27,7 +30,7 @@ class System:
             self.sampling_period = loaded_data["header"]["sampling_period"]
         else:
             self.sampling_period = sampling_period
-            
+
         self.output_data = None
 
         # system delay
@@ -53,14 +56,6 @@ class System:
                 self.inputs.append(key)
             if config["data_to_load"][key]["type"] == "output":
                 self.outputs.append(key)
-
-        print("-----------")
-        print(self.outputs)
-        print(self.inputs)
-
-    # def learn_delay(self):
-    #     # self.delay.learn()
-    #     pass
 
     def system_step(self, u_input: torch.tensor, state_now: torch.tensor,
                     sim_delay=True, sim_base_model=True, sim_error_model=True) -> (torch.tensor, torch.tensor):
@@ -101,7 +96,6 @@ class System:
         else:
             raise ValueError("Input array must be of shape (BATCH x TIME x NUM_INPUTS) or (TIME x NUM_INPUTS)")
 
-
         if initial_state is not None:
             state = initial_state
         else:
@@ -130,7 +124,7 @@ class System:
         :param use_error_model:
         :return:
         """
-        
+
         state_array = None
         with torch.no_grad():
             # state_array (TIME x STATES)
@@ -141,7 +135,7 @@ class System:
                                         use_error_model=use_error_model)
 
         state_array = state_array.numpy()
-        
+
         if true_state is None:
             num_observed_states = 0
         else:
@@ -164,7 +158,6 @@ class System:
                 label = f"Observed state: {self.outputs[i]}"
             time_axis = np.arange(0, time_length, 1) * self.sampling_period
             ax.plot(time_axis, true_state[:, i], marker='o', label=label, markersize=10)
-
 
         for i in range(self.num_states):
             # Do not show states that are not outputs
@@ -246,12 +239,12 @@ class System:
     
     def learn_base_grad(self, inputs: torch.tensor, true_outputs: torch.tensor, initial_state: torch.tensor = None, 
                         batch_size: int = None, optimizer: torch.optim = torch.optim.SGD, learning_rate: int = 0.01,
-                        epochs: int = 100, stop_threshold: float = 0.01):  
+                        epochs: int = 100, stop_threshold: float = 0.01):
 
         # Check if base model is defined
         if self.base_model is None:
             raise ValueError("Base model is not defined")
-                  
+
         # Check if data is provided, raise error if not
         if true_outputs is None:
             raise ValueError("No true outputs provided")
@@ -259,14 +252,14 @@ class System:
             raise ValueError("No inputs provided")
         if true_outputs is None and initial_state is None:
             raise ValueError("An initial state must be provided if no true outputs are.")
-        
+
         # Check that all lists are of the same length
         if len(inputs) != len(true_outputs):
             raise ValueError("Input and output lists must be of the same length")
         if initial_state is not None:
             if len(inputs) != len(initial_state):
                 raise ValueError("Input and initial state lists must be of the same length")
-            
+
         # Within each bag of data, the inputs and outputs must be of the same length or one shorter
         is_equal_length = False
         is_one_shorter = False
@@ -274,20 +267,25 @@ class System:
             # Check if using equal length or one shorter and consistent in all bags
             if inputs[i].shape[0] == true_outputs[i].shape[0]:
                 if is_one_shorter:
-                    raise ValueError("Inconsistent data length. Expected inputs to be one shorter than outputs, but found equal length at bag " + str(i))
+                    raise ValueError(
+                        "Inconsistent data length. Expected inputs to be one shorter than outputs, but found equal length at bag " + str(
+                            i))
                 is_equal_length = True
             elif inputs[i].shape[0] == true_outputs[i].shape[0] - 1:
                 if is_equal_length:
-                    raise ValueError("Inconsistent data length. Expected inputs to be of equal length to outputs, but found one shorter at bag " + str(i))
+                    raise ValueError(
+                        "Inconsistent data length. Expected inputs to be of equal length to outputs, but found one shorter at bag " + str(
+                            i))
                 is_one_shorter = True
             else:
-                raise ValueError("Inputs and outputs must be of the same length or one shorter. Data bag " + str(i) + " failed this requirement")
-            
+                raise ValueError("Inputs and outputs must be of the same length or one shorter. Data bag " + str(
+                    i) + " failed this requirement")
+
             # Check if initial state is provided, if so, check that it is only one state
             if initial_state is not None:
                 if initial_state[i].shape[0] != self.num_states:
                     raise ValueError("Initial state must be of the same size as the number of states")
-                    
+
         # Create list of initial states for each bag of data of size 1 x num_states
         if initial_state is None:
             initial_state = []
@@ -299,13 +297,13 @@ class System:
                     initial_state.append(init_state)
             else:
                 # Construct initial state by concatenating all initial states
-                initial_state =  [true_output[0] for true_output in true_outputs]
+                initial_state = [true_output[0] for true_output in true_outputs]
             # Then remove the first element from each true output
             true_outputs = [true_output[1:] for true_output in true_outputs]
             # Only fix inputs if they are of equal length to outputs
             if is_equal_length:
                 inputs = [input_[1:] for input_ in inputs]
-    
+
         NUM_SIGNALS = len(inputs)
         batched_inputs = []
         batched_true_outputs = []
@@ -316,11 +314,11 @@ class System:
             # If batch size is provided, create a list of batches
             for i in range(0, NUM_SIGNALS, batch_size):
                 # Get shortest length of all bags of data
-                shortest_length = min([input_.shape[0] for input_ in inputs[i:i+batch_size]])
+                shortest_length = min([input_.shape[0] for input_ in inputs[i:i + batch_size]])
                 # Create list of batches of inputs and outputs
-                inputs_batch = [input_[:shortest_length] for input_ in inputs[i:i+batch_size]]
-                true_outputs_batch = [true_output[:shortest_length] for true_output in true_outputs[i:i+batch_size]]
-                initial_state_batch = initial_state[i:i+batch_size]
+                inputs_batch = [input_[:shortest_length] for input_ in inputs[i:i + batch_size]]
+                true_outputs_batch = [true_output[:shortest_length] for true_output in true_outputs[i:i + batch_size]]
+                initial_state_batch = initial_state[i:i + batch_size]
                 # Concatenate all batches into a single tensor
                 batched_inputs.append(torch.stack(inputs_batch))
                 batched_true_outputs.append(torch.stack(true_outputs_batch))
@@ -340,7 +338,7 @@ class System:
         params += list(self.base_model.parameters())
         optim = optimizer(params, lr=learning_rate)
         loss_func = self.base_model.loss_fn
-    
+
         if self.error_model is not None:
             self.error_model.eval()
 
@@ -359,7 +357,7 @@ class System:
 
                 # One-slice t:t+1 allows us to use the same code for batched and unbatched data while preserving correct dimensions
                 loss += loss_func(state_array[..., :num_lossy_states], batched_true_outputs[i][..., :num_lossy_states])
-                
+
                 if loss > stop_threshold:
                     loss_above_threshold = True
                 # print loss and iteration number
@@ -369,17 +367,17 @@ class System:
                 optim.step()
             if not loss_above_threshold:
                 break
-        
+
         print("Learning finished")
         print("------")
-        
+
     def randomize_samples(self):
         self.loaded_data = np.random.permutation(self.loaded_data)
 
     def split_data(self, split_training=0.8):
-        if(self.loaded_data is None):
+        if (self.loaded_data is None):
             raise Exception("No data to split")
-        
+
         self.training_data = []
         self.testing_data = []
 
