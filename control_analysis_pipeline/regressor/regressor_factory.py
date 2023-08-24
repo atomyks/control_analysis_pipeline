@@ -95,7 +95,7 @@ class RegressorFactory(nn.Module):
                                              dim=1)
 
         # (BATCH x HISTORY x NUM_INPUTS)
-        self.state_history = CircularBuffer(torch.zeros(self.batch_size, self.action_history_size, self.num_actions),
+        self.state_history = CircularBuffer(torch.zeros(self.batch_size, self.state_history_size, self.num_states),
                                             dim=1)
 
     def add(self,

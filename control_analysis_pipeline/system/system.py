@@ -330,7 +330,8 @@ class System:
             batched_inputs = inputs
             batched_true_outputs = true_outputs
             batched_initial_state = initial_state
-            
+            batch_size = 1
+
         self.init_learning(batch_size)
 
         print("Learning started")

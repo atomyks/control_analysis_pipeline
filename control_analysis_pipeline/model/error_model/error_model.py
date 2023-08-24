@@ -54,6 +54,9 @@ class ErrorModel(Model):
 
         idx = 0
 
+        self.model_input = None
+        self.model_output = None
+
         # needs to be done iteratively to support list on the input
         for i in range(batch_dim):
             # get dimensions of the current data signal
