@@ -170,4 +170,4 @@ results/
 input_files/
 
 # Ignore the saved models in examples
-examples/saved_models
+control_analysis_pipeline/examples/saved_models
