@@ -71,7 +71,7 @@ class System:
         if sim_base_model:
             state_next = self.base_model(u_input_delayed, state_now)
 
-        error = torch.zeros((state_now.shape[0], self.error_model.num_errors))
+        error = torch.zeros((state_now.shape[0], self.num_states))
         if sim_error_model and self.error_model is not None:
             _, error, lower, upper = self.error_model(u_input=u_input_delayed, y_last=state_now)
 

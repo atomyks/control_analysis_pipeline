@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from yaml import load
 from yaml import Loader
 import time
+import os
 
 def dlqr(A,B,Q,R):
     """Solve the discrete time lqr controller.
@@ -28,7 +29,8 @@ def dlqr(A,B,Q,R):
 
 def main():
     config = None
-    with open("./configs/double_int_config.yaml", "r") as stream:
+    # read config file from ./configs/double_int_config.yaml
+    with open(os.path.dirname(__file__) + "/configs/double_int_config.yaml", "r") as stream:
         config = load(stream, Loader=Loader)
 
     sys = System()
@@ -63,7 +65,7 @@ def main():
             u = np.array([[-1.0 * np.sin(0.1 * 0)]])
 
         # Append the initial state to the initial states array
-        initial_states.append(torch.from_numpy(x_init.T).flatten())
+        initial_states.append(torch.from_numpy(x_init.T).flatten().float())
 
         # Initialize output and input tensors for the simulation as empty tensors
         output_tensor = torch.empty((0, 2))
@@ -89,8 +91,8 @@ def main():
             input_tensor = torch.cat((input_tensor, torch.from_numpy(u).reshape((1, 1))), dim=0)
             output_tensor = torch.cat((output_tensor, torch.from_numpy(xobs.T).reshape((1, 2))), dim=0)
         
-        inputs_arr.append(input_tensor.detach())
-        outputs_arr.append(output_tensor.detach())
+        inputs_arr.append(input_tensor.detach().float())
+        outputs_arr.append(output_tensor.detach().float())
 
     # Plot all the simulated trajectories
     plt.figure()
@@ -233,7 +235,7 @@ def main():
     plt.show()
 
     # Save the learned model
-    learned_sys.save_to_json('learned_model.json')
+    learned_sys.save_to_json(os.path.dirname(__file__) + '/saved_models/learned_model.json')
     
 if __name__ == "__main__":
     main()
