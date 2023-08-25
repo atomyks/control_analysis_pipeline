@@ -128,8 +128,8 @@ if __name__ == "__main__":
     actions_no_history, true_states_no_history = sys.set_system_history(
         copy.deepcopy(true_u).reshape((1, true_u.shape[0], true_u.shape[1])),
         true_outputs,
-        set_delay_history=False,
-        set_base_history=False,
+        set_delay_history=True,
+        set_base_history=True,
         set_error_history=True,
     )
 
@@ -148,8 +148,8 @@ if __name__ == "__main__":
 
     if show_plots:
         y1_ax[1].plot(time_axis[:-1].detach().numpy(), true_u[:, 0].detach().numpy(), 'g', label="u1")
-        y1_ax[1].plot(time_axis.detach().numpy()[2:], predicted_states[0, :, 0].detach().numpy(), 'k', label="u2")
-        y1_ax[1].plot(time_axis.detach().numpy()[2:], predicted_states[0, :, 1].detach().numpy(), 'b', label="s1")
+        y1_ax[1].plot(time_axis.detach().numpy()[9:], predicted_states[0, :, 0].detach().numpy(), 'k', label="u2")
+        y1_ax[1].plot(time_axis.detach().numpy()[9:], predicted_states[0, :, 1].detach().numpy(), 'b', label="s1")
         y1_ax[1].legend()
         # plt.show()
 
@@ -159,9 +159,9 @@ if __name__ == "__main__":
     actions_no_history, true_states_no_history = sys.set_system_history(
         copy.deepcopy(true_u).reshape((1, true_u.shape[0], true_u.shape[1])),
         true_outputs,
-        set_delay_history=False,
-        set_base_history=False,
-        set_error_history=False,
+        set_delay_history=True,
+        set_base_history=True,
+        set_error_history=True,
     )
 
     NUM_S_TO_ADD = sys.num_states - true_outputs.shape[2]
