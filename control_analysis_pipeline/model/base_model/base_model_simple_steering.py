@@ -24,6 +24,8 @@ class SimpleSteering(Model):
 
         self.last_steer_rate = 0.0
 
+        self.loss_fn = nn.L1Loss()
+
     def forward(self, a_input: torch.tensor, y_last: torch.tensor):
         '''
         :param a_input: torch.tensor, BATCH x NUM_INPUTS, system action

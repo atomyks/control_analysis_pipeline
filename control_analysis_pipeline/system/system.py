@@ -6,6 +6,7 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 import json
 import os
+import gradient_free_optimizers as gfo
 
 
 # Enum for model selection
@@ -42,8 +43,6 @@ class System:
         self.inputs = None
         self.outputs = None
 
-        self.loss_fn = nn.MSELoss()
-
     def set_linear_model_matrices(self, A=None, B=None):
         self.base_model.set_model_matrices(A, B)
 
@@ -61,11 +60,11 @@ class System:
 
     def system_step(self, u_input: torch.tensor, state_now: torch.tensor,
                     sim_delay=True, sim_base_model=True, sim_error_model=True) -> (torch.tensor, torch.tensor):
-        
+
         u_input_delayed = u_input
         if sim_delay and self.delay_model is not None:
             u_input_delayed = self.delay_model(u_input)
-            
+
         # if we are not simulating the base model, then the base model is just the identity
         state_next = state_now
         if sim_base_model:
@@ -285,7 +284,6 @@ class System:
         # data needs to be synchronized at all time -> we need to take the same history size
         FULL_REQ_HISTORY = max(REQ_BASE_S_HISTORY, REQ_ERROR_S_HISTORY, REQ_BASE_A_HISTORY, REQ_ERROR_A_HISTORY)
 
-
         # set start and end of the history correctly for all signals
         A_HISTORY_ERROR_END = S_HISTORY_ERROR_END = A_HISTORY_BASE_END = S_HISTORY_BASE_END = FULL_REQ_HISTORY
         S_HISTORY_BASE_START = FULL_REQ_HISTORY - REQ_BASE_S_HISTORY
@@ -324,6 +322,66 @@ class System:
         true_states_no_history = true_states[:, FULL_REQ_HISTORY:, :]
 
         return actions_no_history, true_states_no_history
+
+    def nongrad_learn_base_model(self,
+                                 inputs: torch.tensor or list[torch.tensor],
+                                 true_outputs: torch.tensor or list[torch.tensor],
+                                 batch_size: int = None,
+                                 optimizer=gfo.EvolutionStrategyOptimizer,
+                                 epochs: int = 100,
+                                 verbose=False):
+        if batch_size is None:
+            batch_size = 1
+        else:
+            raise NotImplementedError('Feel free to finish this')
+        self.base_model.batch_size = batch_size
+        num_actions = self.base_model.num_actions
+        num_states = self.base_model.num_states
+        search_space, nongrad_params_flat = self.base_model.get_search_space()
+
+        def objective_function(para):
+            # init cumulative loss
+            loss = 0.0
+            # set model parameters
+            for param_name in list(nongrad_params_flat.keys()):
+                nongrad_params_flat[param_name].set(para[param_name])
+            # reset model memory
+            self.base_model.reset()
+            # set initial state
+            initial_state = torch.zeros((batch_size, num_actions))
+
+            for i in range(NUM_SIGNALS):
+                state_array, _, _ = self.simulate(input_array=inputs[i], initial_state=initial_state,
+                                                  use_delay=True, use_base_model=True,
+                                                  use_error_model=False)
+
+                loss += self.base_model.loss_fn(state_array[i], true_outputs[i, 1:, 0:state_array.shape[-1]])
+
+            score = -loss
+            return score
+
+        if isinstance(inputs, list):
+            NUM_SIGNALS = len(inputs)
+        elif isinstance(inputs, torch.Tensor):
+            if inputs.dim() == 3:
+                NUM_SIGNALS = inputs.shape[0]
+            elif inputs.dim() == 2:
+                NUM_SIGNALS = 1
+                inputs = inputs.reshape((NUM_SIGNALS, inputs.shape[0], inputs.shape[1]))
+                # TODO fix this
+                true_outputs = true_outputs.reshape((NUM_SIGNALS, true_outputs.shape[0], true_outputs.shape[1]))
+            else:
+                raise ValueError('dimension mismatch')
+        else:
+            raise TypeError(f'require type list or torch.Tensor but is of type {type(inputs)}')
+
+        opt = optimizer(search_space)
+        if verbose:
+            verbose = ["progress_bar", "print_results", "print_times"]
+        opt.search(objective_function, n_iter=epochs, verbosity=verbose)
+
+        for name in list(nongrad_params_flat.keys()):
+            nongrad_params_flat[name].set(opt.best_para[name])
 
     def learn_error_grad(self,
                          inputs: torch.tensor or list[torch.tensor],
@@ -592,12 +650,12 @@ class System:
         if file_path == '':
             file_path = '.'
         if not os.path.exists(file_path):
-            raise ValueError("Folder path does not exist")        
+            raise ValueError("Folder path does not exist")
 
-        # Check if file exists, raise error if it does
+            # Check if file exists, raise error if it does
         if os.path.isfile(file_name):
             raise ValueError("File already exists")
-        
+
         json_dict = {}
 
         json_dict["num_states"] = self.num_states
