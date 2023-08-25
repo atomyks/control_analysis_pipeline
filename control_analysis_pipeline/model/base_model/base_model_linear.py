@@ -41,3 +41,13 @@ class BaseLinearModel(Model):
             self.A.weight = nn.parameter.Parameter(A)
         if B is not None:
             self.B.weight = nn.parameter.Parameter(B)
+    
+    def get_json_repr(self):
+        '''
+        Get a json representation of the model.
+        :return: json representation of the model
+        '''
+        json_repr = super(BaseLinearModel, self).get_json_repr()
+        json_repr['A'] = self.A.weight.detach().numpy().tolist()
+        json_repr['B'] = self.B.weight.detach().numpy().tolist()
+        return json_repr

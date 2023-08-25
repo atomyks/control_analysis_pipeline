@@ -1,10 +1,8 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import queue
 from control_analysis_pipeline.model.model import Model
 from control_analysis_pipeline.functional.deadzone import Deadzone
-
+import os
 
 class NonlinearSteering(Model):
     def __init__(self):
@@ -64,6 +62,11 @@ if __name__ == "__main__":
     for name in list(nongrad_params_flat.keys()):
         nongrad_params_flat[name].set(opt.best_para[name])
 
-    # Print model after optimization
-    print(model)
+    # Visualize model as json
+    import json
+    json_dict = model.get_json_repr()
+    print(json.dumps(json_dict, sort_keys=False, indent=4))
     
+    # Save to file
+    with open(os.path.dirname(__file__) + '/saved_models/deadzone_example.json', 'w') as outfile:
+        json.dump(json_dict, outfile, sort_keys=False, indent=4)

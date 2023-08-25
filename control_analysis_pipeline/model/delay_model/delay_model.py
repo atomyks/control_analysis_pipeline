@@ -71,3 +71,12 @@ class InputDelayModel(Model):
         for t in range(self.delay_parm.get()):
             u = history[..., t, :].reshape((self.batch_size, self.num_actions))
             self.input_queue.put(u)
+
+    def get_json_repr(self):
+        '''
+        Get a json representation of the model.
+        :return: json representation of the model
+        '''
+        json_repr = super(InputDelayModel, self).get_json_repr()
+        json_repr['delay'] = self.delay_parm.get()
+        return json_repr
