@@ -4,7 +4,7 @@ from control_analysis_pipeline.model.error_model.error_model import ErrorModel
 from control_analysis_pipeline.utils.normalizer import TorchNormalizer
 import gpytorch
 import gc
-
+from typing import Optional
 
 class BatchIndependentMultitaskGPModel(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood, num_actions, num_error_dim):
@@ -58,9 +58,9 @@ class ErrorGPModel(ErrorModel):
         self.reg.add(new_regressor, a_defs=a_def)
 
     def forward(self,
-                regressors: torch.tensor or None = None,
-                u_input: torch.tensor or None = None,
-                y_last: torch.tensor or None = None):
+                regressors: Optional[torch.tensor] = None,
+                u_input: Optional[torch.tensor] = None,
+                y_last: Optional[torch.tensor] = None):
         """
         :param regressors: torch.tensor, BATCH x NUM_REGRESSORS, GP input
         :param u_input: torch.tensor, BATCH x NUM_INPUTS, system action
@@ -140,3 +140,26 @@ class ErrorGPModel(ErrorModel):
         self.enable_grad_learning(mll)
 
         return train_x_scaled, train_y_scaled
+
+    def get_json_repr(self):
+        '''
+        
+        :return: json representation of the model
+        '''
+        # Extract only the parameters used in the forward method for GP inference
+        gp_model_dict = self.gp_model.state_dict()
+        gp_model_dict = {k: v.tolist() for k, v in gp_model_dict.items() if k in ['mean_module.constant', 'covar_module.raw_outputscale', 'covar_module.base_kernel.raw_lengthscale']}
+        gp_likelihood_dict = self.gp_likelihood.state_dict()
+        gp_likelihood_dict = {k: v.tolist() for k, v in gp_likelihood_dict.items() if k in ['raw_noise']}
+        
+        json_dict = super(ErrorGPModel, self).get_json_repr()
+        json_dict['gp_model'] = gp_model_dict
+        json_dict['gp_likelihood'] = gp_likelihood_dict
+        json_dict['scaler_x'] = self.scaler_x.get_json_repr()
+        json_dict['scaler_y'] = self.scaler_y.get_json_repr()
+
+        # Add model data
+        json_dict['model_input_scaled'] = self.scaler_x.transform(self.model_input).tolist()
+        json_dict['model_output_scaled'] = self.scaler_y.transform(self.model_output).tolist()
+        return json_dict
+        

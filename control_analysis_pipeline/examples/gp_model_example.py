@@ -1,7 +1,7 @@
 import torch
 import gpytorch
 from control_analysis_pipeline.model.error_model.error_gp_model import ErrorGPModel
-
+import os
 if __name__ == "__main__":
     from matplotlib import pyplot as plt
 
@@ -104,3 +104,12 @@ if __name__ == "__main__":
     y2_ax.set_title('Observed Values (Likelihood)')
 
     plt.show()
+
+    # Save model to json
+    json_repr = gp.get_json_repr()
+    import json
+    print(json.dumps(json_repr, sort_keys=False, indent=4))
+    
+    # Save to file
+    with open(os.path.dirname(__file__) + '/saved_models/gp_example.json', 'w') as outfile:
+        json.dump(json_repr, outfile, sort_keys=False, indent=4)
