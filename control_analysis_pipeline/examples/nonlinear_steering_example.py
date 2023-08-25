@@ -1,12 +1,8 @@
 import torch
 import torch.nn as nn
-from control_analysis_pipeline.model.model import Model
-from control_analysis_pipeline.functional.deadzone import Deadzone
-import os
 from control_analysis_pipeline.model.base_model.base_model_simple_steering import SimpleSteering
 import matplotlib.pyplot as plt
 from control_analysis_pipeline.system.system import System
-# from gradient_free_optimizers import EvolutionStrategyOptimizer
 import gradient_free_optimizers as gfo
 
 
@@ -39,6 +35,8 @@ def nongrad_learn_base_model(inputs: torch.tensor or list[torch.tensor],
                              verbose=False):
     if batch_size is None:
         batch_size = 1
+    else:
+        raise NotImplementedError('Feel free to finish this')
     system.base_model.batch_size = batch_size
     num_actions = system.base_model.num_actions
     num_states = system.base_model.num_states
@@ -83,8 +81,6 @@ def nongrad_learn_base_model(inputs: torch.tensor or list[torch.tensor],
     if verbose:
         verbose = ["progress_bar", "print_results", "print_times"]
     opt.search(objective_function, n_iter=epochs, verbosity=verbose)
-
-    # exit()
 
     for name in list(nongrad_params_flat.keys()):
         nongrad_params_flat[name].set(opt.best_para[name])
@@ -168,6 +164,7 @@ if __name__ == "__main__":
     loss_fn = nn.L1Loss()
     # -----------------------------------GENERATE TRAINING DATA DONE---------------------------------------------
 
+    # Learn system
     system = System(num_states=1, num_actions=2)
     system.base_model = SimpleSteering()
     print("--------------------------TEST--------------------------")
@@ -175,23 +172,21 @@ if __name__ == "__main__":
 
     nongrad_learn_base_model(inputs=true_u,
                              true_outputs=true_s,
-                             batch_size=None,
                              optimizer=gfo.EvolutionStrategyOptimizer,
-                             epochs=100,
+                             epochs=200,
                              verbose=True)
 
-    steer_predicted = torch.zeros((true_u.shape[0] + 1, true_u.shape[1]))
-    steer = torch.tensor([0.0])
-    steer_predicted[0] = steer
+    # Simulate learned system
+    initial_state = torch.zeros((1, 1))
     system.base_model.reset()
-    for i in range(true_u.shape[0]):
-        steer = system.base_model(a_input=true_u[i].reshape((1, 1)), y_last=steer.reshape((1, 1)))
-        steer_predicted[i + 1] = steer
+    steer_predicted, _, _ = system.simulate(input_array=true_u, initial_state=initial_state,
+                                            use_delay=True, use_base_model=True,
+                                            use_error_model=False)
 
     if show_plots:
         # Show training datas
         y2_ax[0].plot(time_axis[:-1].detach().numpy(), true_u[:, 0].detach().numpy(), 'g', label="u1")
-        y2_ax[0].plot(time_axis.detach().numpy(), steer_predicted[:, 0].detach().numpy(), 'k', label="angle")
+        y2_ax[0].plot(time_axis[1:].detach().numpy(), steer_predicted[0][:, 0].detach().numpy(), 'k', label="angle")
         y2_ax[0].set_xlim((0.0, 50.0))
         y2_ax[0].legend()
         plt.show()
