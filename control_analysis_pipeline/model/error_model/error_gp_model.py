@@ -49,6 +49,10 @@ class ErrorGPModel(ErrorModel):
         new_regressor = lambda a, s: s[0]
         self.reg.add(new_regressor, s_defs=s_def)
 
+        s_def = [(0, 1)]
+        new_regressor = lambda a, s: s[0]
+        self.reg.add(new_regressor, s_defs=s_def)
+
         a_def = [(0, 0)]
         new_regressor = lambda a, s: a[0]
         self.reg.add(new_regressor, a_defs=a_def)
@@ -74,6 +78,7 @@ class ErrorGPModel(ErrorModel):
 
         if regressors is not None:
             # for training just do predict the model because the input data should be already scaled by
+
             output, mean, lower, upper, cov = self.predict_model_step(regressors)
             return output, mean, lower, upper, cov
         else:

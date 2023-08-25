@@ -98,7 +98,7 @@ class System:
             raise ValueError("Input array must be of shape (BATCH x TIME x NUM_INPUTS) or (TIME x NUM_INPUTS)")
 
         if initial_state is not None:
-            state = initial_state
+            state = initial_state.reshape((batch_size, self.num_states))
         else:
             state = torch.zeros((batch_size, self.num_states))
 
@@ -110,9 +110,6 @@ class System:
             # One-slice t:t+1 allows us to use the same code for batched and unbatched data while preserving correct dimensions
             state, action_delayed, error = self.system_step(input_array[..., t, :], state, use_delay, use_base_model,
                                                             use_error_model)
-            state_array[..., t, :] = state
-            action_delayed_array[..., t, :] = action_delayed
-            # error_array[..., t, :] = error  # TODO needs to be solve
 
             error_correct_dim = torch.cat((
                 error,
@@ -284,16 +281,9 @@ class System:
             REQ_ERROR_A_HISTORY = 1
             REQ_ERROR_S_HISTORY = 1
 
-        # print("******************************<DEBUG>******************************")
-        #
-        # print(actions.shape)
-        # print(true_states.shape)
-
         # data needs to be synchronized at all time -> we need to take the same history size
         FULL_REQ_HISTORY = max(REQ_BASE_S_HISTORY, REQ_ERROR_S_HISTORY, REQ_BASE_A_HISTORY, REQ_ERROR_A_HISTORY)
 
-        # print("--------4--------")
-        # print(FULL_REQ_HISTORY)
 
         # set start and end of the history correctly for all signals
         A_HISTORY_ERROR_END = S_HISTORY_ERROR_END = A_HISTORY_BASE_END = S_HISTORY_BASE_END = FULL_REQ_HISTORY
@@ -303,11 +293,6 @@ class System:
         A_HISTORY_ERROR_START = FULL_REQ_HISTORY - REQ_ERROR_A_HISTORY
         A_HISTORY_DELAY_START = FULL_REQ_HISTORY
         A_HISTORY_DELAY_END = A_HISTORY_DELAY_START + REQ_DELAY_A_HISTORY
-        # print(f"A_HISTORY_BASE_START: {A_HISTORY_BASE_START}, A_HISTORY_BASE_END {A_HISTORY_BASE_END}")
-        # print(f"S_HISTORY_BASE_START: {S_HISTORY_BASE_START}, S_HISTORY_BASE_END {S_HISTORY_BASE_END}")
-        # print(f"A_HISTORY_ERROR_START: {A_HISTORY_ERROR_START}, A_HISTORY_ERROR_END {A_HISTORY_ERROR_END}")
-        # print(f"S_HISTORY_ERROR_START: {S_HISTORY_ERROR_START}, S_HISTORY_ERROR_END {S_HISTORY_ERROR_END}")
-        # print(f"DELAY START: {A_HISTORY_DELAY_START}, DELAY END: {A_HISTORY_DELAY_END}")
 
         NUM_S_TO_ADD = self.num_states - true_states.shape[2]
         # TODO fix so the first point is not wasted
@@ -332,27 +317,14 @@ class System:
                 history=actions[:, A_HISTORY_DELAY_START:A_HISTORY_DELAY_END, :]
             )
 
-        # print(REQ_DELAY_A_HISTORY)
-        # print(FULL_REQ_HISTORY)
-
         actions_no_history = torch.cat((actions[:, A_HISTORY_DELAY_END:, :],
                                         torch.zeros((actions.shape[0], A_HISTORY_DELAY_END - A_HISTORY_DELAY_START,
                                                      actions.shape[2]))), dim=1)
         true_states_no_history = true_states[:, FULL_REQ_HISTORY:, :]
-        print(actions_no_history.shape)
-        print(true_states_no_history.shape)
-        # print(true_states.shape)
 
         return actions_no_history, true_states_no_history
 
     def learn_error_grad(self,
-                         # train_s=None,
-                         # train_u=None,
-                         # train_y=None,
-                         # epochs=300,
-                         # verbose=True,
-                         # optimizer=torch.optim.Adam):
-
                          inputs: torch.tensor or list[torch.tensor],
                          true_outputs: torch.tensor or list[torch.tensor],
                          batch_size: int = None,
