@@ -5,6 +5,7 @@ from control_analysis_pipeline.regressor.regressor_factory import RegressorFacto
 from control_analysis_pipeline.model.nongradient_parameter import NongradParameter
 from typing import Optional
 
+
 class Model(nn.Module):
     """
     Base class for all models. All models should inherit from this class.
@@ -33,7 +34,7 @@ class Model(nn.Module):
         self.reg = RegressorFactory(batch_size=1, num_actions=self.num_actions,
                                     num_states=self.num_states, action_history_size=self.action_history_size,
                                     state_history_size=self.state_history_size)
-        
+
         # Gradient loss function
         self.loss_fn = None
 
@@ -48,7 +49,7 @@ class Model(nn.Module):
         """
         self.back_prop = True
         self.loss_fn = loss_function
-        
+
     def get_regressors(self, u_input: torch.tensor, y_last: torch.tensor):
         """
         :param u_input: torch.tensor, 1 x INPUTS, system input
@@ -68,7 +69,7 @@ class Model(nn.Module):
 
         return len(self.reg)
 
-    def init_regressor_history(self, 
+    def init_regressor_history(self,
                                batch_size: int = 1,
                                history_a: Optional[torch.tensor] = None, 
                                history_s: Optional[torch.tensor] = None):
@@ -89,7 +90,7 @@ class Model(nn.Module):
             history_s = torch.zeros((batch_size, self.state_history_size, self.num_outputs))
 
         self.reg.set_history(history_a, history_s)
-        
+
     def forward(self,
                 regressors: Optional[torch.tensor] = None,
                 a_input: Optional[torch.tensor] = None,
@@ -110,6 +111,12 @@ class Model(nn.Module):
         :return:
         '''
         pass
+
+    def reset_history(self):
+        self.reg.reset_history()
+
+    def set_history(self, action_history: torch.tensor, state_history: torch.tensor):
+        self.reg.set_history(action_history, state_history)
 
     def register_nongrad_parameter(self, name:str, value:NongradParameter):
         '''

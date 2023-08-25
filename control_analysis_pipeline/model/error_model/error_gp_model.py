@@ -7,13 +7,13 @@ import gc
 from typing import Optional
 
 class BatchIndependentMultitaskGPModel(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood, num_actions, num_states):
+    def __init__(self, train_x, train_y, likelihood, num_actions, num_error_dim):
         super().__init__(train_x, train_y, likelihood)
-        self.mean_module = gpytorch.means.ConstantMean(batch_shape=torch.Size([num_states]))
+        self.mean_module = gpytorch.means.ConstantMean(batch_shape=torch.Size([num_error_dim]))
         self.covar_module = gpytorch.kernels.ScaleKernel(
-            # gpytorch.kernels.PeriodicKernel(batch_shape=torch.Size([num_states]), ard_num_dims=num_actions) +
-            gpytorch.kernels.RBFKernel(batch_shape=torch.Size([num_states]), ard_num_dims=num_actions),
-            batch_shape=torch.Size([num_states])
+            # gpytorch.kernels.PeriodicKernel(batch_shape=torch.Size([num_error_dim]), ard_num_dims=num_actions) +
+            gpytorch.kernels.RBFKernel(batch_shape=torch.Size([num_error_dim]), ard_num_dims=num_actions),
+            batch_shape=torch.Size([num_error_dim])
 
         )
 
@@ -30,19 +30,26 @@ class ErrorGPModel(ErrorModel):
     Similar to https://pytorch.org/tutorials/beginner/former_torchies/nnft_tutorial.html
     """
 
-    def __init__(self, num_actions=1, num_states=1, action_history_size=1, state_history_size=1):
-        super(ErrorGPModel, self).__init__(num_actions=num_actions, num_states=num_states, action_history_size=action_history_size, state_history_size=state_history_size)
+    def __init__(self, num_actions=1, num_states=1, num_errors=1, action_history_size=1, state_history_size=1):
+        super(ErrorGPModel, self).__init__(num_actions=num_actions, num_states=num_states, num_errors=num_errors,
+                                           action_history_size=action_history_size,
+                                           state_history_size=state_history_size)
 
-        self.gp_likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=self.num_states)
+        self.gp_likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=self.num_errors)
         self.gp_model = BatchIndependentMultitaskGPModel(None, None, self.gp_likelihood,
-                                                         num_actions=self.regressor_size(), num_states=self.num_states)
+                                                         num_actions=self.regressor_size(),
+                                                         num_error_dim=self.num_errors)
         self.init_lengthscale = 0.1
-        
+
         self.scaler_x = TorchNormalizer(num_of_normalizers=self.num_actions)
-        self.scaler_y = TorchNormalizer(num_of_normalizers=self.num_states)
+        self.scaler_y = TorchNormalizer(num_of_normalizers=self.num_errors)
 
         # Add basic regressors
         s_def = [(0, 0)]
+        new_regressor = lambda a, s: s[0]
+        self.reg.add(new_regressor, s_defs=s_def)
+
+        s_def = [(0, 1)]
         new_regressor = lambda a, s: s[0]
         self.reg.add(new_regressor, s_defs=s_def)
 
@@ -71,17 +78,17 @@ class ErrorGPModel(ErrorModel):
 
         if regressors is not None:
             # for training just do predict the model because the input data should be already scaled by
+
             output, mean, lower, upper, cov = self.predict_model_step(regressors)
             return output, mean, lower, upper, cov
         else:
             regressors = self.get_regressors(u_input, y_last)
             output, mean, lower, upper, cov = self.scale_and_predict_model_step(regressors)
-            return output, mean, lower, upper
+            return output, mean, lower, upper  # , cov
 
     def scale_and_predict_model_step(self, gp_input):
 
         point = self.scaler_x.transform(gp_input)
-
         output, normalized_mean, normalized_lower, normalized_upper, cov = self.predict_model_step(point)
 
         if len(normalized_lower.shape) == 1:
@@ -99,6 +106,7 @@ class ErrorGPModel(ErrorModel):
         :param gp_input_normalized:
         :return: model error prediction
         """
+
         output = self.gp_likelihood(self.gp_model(gp_input_normalized))
         confidence = output.confidence_region()
         return output, output.mean, torch.squeeze(confidence[0]), torch.squeeze(
@@ -109,7 +117,6 @@ class ErrorGPModel(ErrorModel):
         train_y = self.model_output  # (DATA_LENGTH x NUM_OUTPUTS)
 
         train_x_scaled = self.scaler_x.fit_transform(train_x)
-
         train_y_scaled = self.scaler_y.fit_transform(train_y)
         train_y_scaled = train_y_scaled.contiguous()
 
@@ -121,9 +128,10 @@ class ErrorGPModel(ErrorModel):
             del self.gp_model
             gc.collect()
 
-        self.gp_likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=self.num_states)
+        self.gp_likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=self.num_errors)
         self.gp_model = BatchIndependentMultitaskGPModel(train_x_scaled, train_y_scaled, self.gp_likelihood,
-                                                         num_actions=self.regressor_size(), num_states=self.num_states)
+                                                         num_actions=self.regressor_size(),
+                                                         num_error_dim=self.num_errors)
 
         self.gp_model.covar_module.base_kernel.lengthscale = self.init_lengthscale
 

@@ -12,8 +12,13 @@ class BaseLinearModel(Model):
         super(BaseLinearModel, self).__init__(num_actions=num_actions, num_states=num_states)
         self.enable_grad_learning(nn.MSELoss())
 
-        self.A = nn.Linear(num_states, num_states, bias=False, dtype=torch.double)
-        self.B = nn.Linear(num_actions, num_states, bias=False, dtype=torch.double)
+        self.A = nn.Linear(num_states, num_states, bias=False)
+        self.B = nn.Linear(num_actions, num_states, bias=False)
+
+        self.set_model_matrices(
+            A=torch.eye(num_states),
+            B=torch.zeros((num_states, num_actions))
+        )
 
     def forward(self, a_input: torch.tensor, y_last: torch.tensor):
         '''
@@ -22,9 +27,10 @@ class BaseLinearModel(Model):
         :param y_last: torch.tensor, BATCH x NUM_STATES, system state
         :return:                
         '''
+
         y_now = self.A(y_last) + self.B(a_input)
         return y_now
-    
+
     def set_model_matrices(self, A=None, B=None):
         '''
         Set the model matrices A and B. Be aware that this will create new parameters for the model and will reset requires_grad to True.
