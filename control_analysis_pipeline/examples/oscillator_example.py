@@ -1,4 +1,3 @@
-import argparse
 from control_analysis_pipeline.system.system import System
 import torch
 import numpy as np
@@ -29,7 +28,7 @@ def dlqr(A,B,Q,R):
 
 def main():
     config = None
-    with open("double_int_config.yaml", "r") as stream:
+    with open("./configs/double_int_config.yaml", "r") as stream:
         config = load(stream, Loader=Loader)
 
     sys = System()
@@ -122,6 +121,7 @@ def main():
     
     learned_sys.parse_config(config)
     
+    ## Uncomment the following lines to learn the model with fixed B-matrix
     # # Set only B-matrix to the true model matrices
     # learned_sys.set_linear_model_matrices(A=None,B=torch.zeros_like(sys.base_model.B.weight.detach()))
 

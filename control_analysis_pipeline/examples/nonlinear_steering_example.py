@@ -1,7 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import queue
 from control_analysis_pipeline.model.model import Model
 from control_analysis_pipeline.functional.deadzone import Deadzone
 
@@ -70,5 +68,5 @@ if __name__ == "__main__":
     print(json.dumps(json_dict, sort_keys=False, indent=4))
     
     # Save to file
-    with open('deadzone_example.json', 'w') as outfile:
+    with open('./saved_models/deadzone_example.json', 'w') as outfile:
         json.dump(json_dict, outfile, sort_keys=False, indent=4)

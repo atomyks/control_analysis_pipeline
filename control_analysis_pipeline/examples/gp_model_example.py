@@ -111,5 +111,5 @@ if __name__ == "__main__":
     print(json.dumps(json_repr, sort_keys=False, indent=4))
     
     # Save to file
-    with open('gp_example.json', 'w') as outfile:
+    with open('./saved_models/gp_example.json', 'w') as outfile:
         json.dump(json_repr, outfile, sort_keys=False, indent=4)
