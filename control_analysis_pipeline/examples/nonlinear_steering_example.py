@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from control_analysis_pipeline.model.base_model.base_model_simple_steering import SimpleSteering
+from control_analysis_pipeline.model.delay_model.delay_model import InputDelayModel
 import matplotlib.pyplot as plt
 from control_analysis_pipeline.system.system import System
 import gradient_free_optimizers as gfo
@@ -30,20 +31,20 @@ def system_get_f(x, J, T_in, b3, T_f):
 if __name__ == "__main__":
     # -----------------------------------GENERATE TRAINING DATA---------------------------------------------
     # define model parameters
-    Bl = 0.0081  # 0.00178745
-    Br = 0.0088  # 0.00178745
-    D = 0
+    Bl = 0.0011  # 0.00178745
+    Br = 0.0011  # 0.00178745
+    D = 5
     e = 0.87
     e2 = 0.8
 
-    Kp = 121.0
-    Ki = 0.008
+    Kp = 25.0
+    Ki = 0.012
     Kd = 0.038
     J = 0.7
     b3 = 8.2
     T_f = 0.0
     brr = 1.0
-    bll = 1.5
+    bll = 1.0
 
     # simulation parameters
     end_time = 100.0
@@ -72,16 +73,19 @@ if __name__ == "__main__":
     integral = 0.0
     last_error = 0.0
 
+    delay_model = InputDelayModel(num_actions=1)
+    delay_model.set_delay_val(torch.tensor([D]))
+    delay_model.reset()
+
     for i in range(cmd.shape[0] - 1 - D):
-        a = 0.0
-        if i > 1000:
-            a = 0.0
-            cmd[i] += a
-        error = -(u_virt[i] - (cmd[i]))
+
+        action = delay_model(cmd[i])
+
+        error = -(u_virt[i] - (action))
         integral += error
         T_in = error * Kp + integral * Ki + (last_error - error) * Kd
         last_error = error
-        x = x + system_get_f(x, J, T_in, b3, T_f) * 0.03  # Forward euler
+        x = x + system_get_f(x, J, T_in, b3, T_f) * dt  # Forward euler
         x[1] = deadzone_autoware(x[1], Br, -Bl, brr, bll)
         true_s[i, 0] = x[0]
         true_s[i, 1] = x[1]

@@ -3,6 +3,7 @@ import torch.nn as nn
 from control_analysis_pipeline.model.model import Model
 from control_analysis_pipeline.functional.deadzone import Deadzone
 from control_analysis_pipeline.model.nongradient_parameter import NongradParameter
+from control_analysis_pipeline.model.delay_model.delay_model import InputDelayModel
 
 
 class SimpleSteering(Model):
@@ -10,9 +11,13 @@ class SimpleSteering(Model):
         super(SimpleSteering, self).__init__(num_actions=1, num_states=1)
         self.batch_size = 1
 
-        self.layer1 = Deadzone(r_lb=0.0, r_ub=0.02, r_precision=0.001,
-                               l_lb=-0.02, l_ub=0.0, l_precision=0.001)
-        self.register_model("layer1", self.layer1)
+        self.delay_layer = InputDelayModel(num_actions=1)
+        self.delay_layer.reset()
+        self.register_model("delay_layer", self.delay_layer)
+
+        self.deadzone_layer = Deadzone(r_lb=0.0, r_ub=0.02, r_precision=0.001,
+                                       l_lb=-0.02, l_ub=0.0, l_precision=0.001)
+        self.register_model("deadzone_layer", self.deadzone_layer)
 
         self.time_const = NongradParameter(torch.zeros((1,)), lb=0.01, ub=0.2, precision=0.05)
         self.register_nongrad_parameter(name="time_constant", value=self.time_const)
@@ -32,8 +37,11 @@ class SimpleSteering(Model):
         :param y_last: torch.tensor, BATCH x NUM_STATES, system state
         :return:
         '''
-        error = -(y_last - a_input)
-        steer_rate = self.layer1(error + self.last_steer_rate) / self.time_const.get()
+
+        a_input_delayed = self.delay_layer(a_input)
+
+        error = -(y_last - a_input_delayed)
+        steer_rate = self.deadzone_layer(error + self.last_steer_rate) / self.time_const.get()
 
         steer_rate = min(max(steer_rate, -3.0), 3.0)  # limit for steering velocity
         y_output = y_last + steer_rate * self.dt  # Forward euler
@@ -43,6 +51,7 @@ class SimpleSteering(Model):
 
     def reset(self):
         self.last_steer_rate = 0.0
+        self.delay_layer.reset()
 
     def set_batch_size(self, batch_size):
         self.batch_size = batch_size
