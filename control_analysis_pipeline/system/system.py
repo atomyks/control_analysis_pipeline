@@ -348,7 +348,7 @@ class System:
             # reset model memory
             self.base_model.reset()
             # set initial state
-            initial_state = torch.zeros((batch_size, num_actions))
+            initial_state = torch.zeros((batch_size, num_states))
 
             for i in range(NUM_SIGNALS):
                 state_array, _, _ = self.simulate(input_array=inputs[i], initial_state=initial_state,

@@ -7,7 +7,7 @@ from control_analysis_pipeline.model.nongradient_parameter import NongradParamet
 
 class SimpleSteering(Model):
     def __init__(self):
-        super(SimpleSteering, self).__init__(num_actions=1, num_states=2)
+        super(SimpleSteering, self).__init__(num_actions=1, num_states=1)
         self.batch_size = 1
 
         self.layer1 = Deadzone(r_lb=0.0, r_ub=0.02, r_precision=0.001,
@@ -20,7 +20,7 @@ class SimpleSteering(Model):
         self.steer_rate_e = NongradParameter(torch.zeros((1,)), lb=0.0, ub=0.12, precision=0.001)
         self.register_nongrad_parameter(name="steer_rate_e", value=self.steer_rate_e)
 
-        self.dt = 0.03
+        self.dt = 0.1
 
         self.last_steer_rate = 0.0
 

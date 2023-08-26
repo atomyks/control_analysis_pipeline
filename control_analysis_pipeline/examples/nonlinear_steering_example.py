@@ -105,7 +105,7 @@ if __name__ == "__main__":
     # -----------------------------------GENERATE TRAINING DATA DONE---------------------------------------------
 
     # Learn system
-    system = System(num_states=1, num_actions=2)
+    system = System(num_states=1, num_actions=1)
     system.base_model = SimpleSteering()
     print("--------------------------TEST--------------------------")
 

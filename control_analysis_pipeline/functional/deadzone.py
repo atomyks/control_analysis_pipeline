@@ -25,7 +25,7 @@ class Deadzone(Model):
                   Parameters of deadzone are the same for each input element
         :return:
         """
-        y = torch.where(x < self.l_lambd or self.r_lambd < x, x, 0.0)
+        y = torch.where(torch.logical_or(x < self.l_lambd, self.r_lambd < x), x, 0.0)
         # print(f"deadzone: x {x}  ->  y {y}  {x < self.l_lambd or self.r_lambd < x}, {self.l_lambd.get()}, ")
 
         return y
