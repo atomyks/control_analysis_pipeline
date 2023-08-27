@@ -7,7 +7,7 @@ from control_analysis_pipeline.model.delay_model.delay_model import InputDelayMo
 
 
 class SimpleSteering(Model):
-    def __init__(self):
+    def __init__(self, dt: float = 0.1):
         super(SimpleSteering, self).__init__(num_actions=1, num_states=1)
         self.batch_size = 1
 
@@ -25,7 +25,7 @@ class SimpleSteering(Model):
         self.steer_rate_e = NongradParameter(torch.zeros((1,)), lb=0.0, ub=0.12, precision=0.001)
         self.register_nongrad_parameter(name="steer_rate_e", value=self.steer_rate_e)
 
-        self.dt = 0.1
+        self.dt = dt
 
         self.last_steer_rate = 0.0
 
