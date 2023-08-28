@@ -26,8 +26,6 @@ class System:
 
         self.training_data = None
         self.testing_data = None
-        self.num_states = num_states
-        self.num_actions = num_actions
 
         if loaded_data is not None:
             self.sampling_period = loaded_data["header"]["sampling_period"]
@@ -38,7 +36,7 @@ class System:
 
         # system delay
         self.delay_model = None
-        self.base_model = BaseLinearModel(num_actions=self.num_actions, num_states=self.num_states)
+        self.base_model = BaseLinearModel(num_actions=num_actions, num_states=num_states)
         self.error_model = None
         self.inputs = None
         self.outputs = None
@@ -70,7 +68,7 @@ class System:
         if sim_base_model:
             state_next = self.base_model(u_input_delayed, state_now)
 
-        error = torch.zeros((state_now.shape[0], self.num_states))
+        error = torch.zeros((state_now.shape[0], self.base_model.num_states))
         if sim_error_model and self.error_model is not None:
             _, error, lower, upper = self.error_model(u_input=u_input_delayed, y_last=state_now)
 
@@ -89,21 +87,21 @@ class System:
         """
 
         if input_array.dim() == 3:
-            batch_size, time_length, _ = input_array.shape
+            batch_size, time_length, num_actions = input_array.shape
         elif input_array.dim() == 2:
-            time_length, _ = input_array.shape
+            time_length, num_actions = input_array.shape
             batch_size = 1
         else:
             raise ValueError("Input array must be of shape (BATCH x TIME x NUM_INPUTS) or (TIME x NUM_INPUTS)")
 
         if initial_state is not None:
-            state = initial_state.reshape((batch_size, self.num_states))
+            state = initial_state.reshape((batch_size, self.base_model.num_states))
         else:
-            state = torch.zeros((batch_size, self.num_states))
+            state = torch.zeros((batch_size, self.base_model.num_states))
 
-        action_delayed_array = torch.zeros((batch_size, time_length, self.num_actions))
-        state_array = torch.zeros((batch_size, time_length, self.num_states))  # BATCH x TIME x STATES
-        error_array = torch.zeros((batch_size, time_length, self.num_states))
+        action_delayed_array = torch.zeros((batch_size, time_length, num_actions))
+        state_array = torch.zeros((batch_size, time_length, self.base_model.num_states))  # BATCH x TIME x STATES
+        error_array = torch.zeros((batch_size, time_length, self.base_model.num_states))
 
         for t in range(time_length):
             # One-slice t:t+1 allows us to use the same code for batched and unbatched data while preserving correct dimensions
@@ -168,7 +166,7 @@ class System:
             time_axis = np.arange(0, time_length, 1) * self.sampling_period
             ax.plot(time_axis, true_state[:, i], marker='o', label=label, markersize=10)
 
-        for i in range(self.num_states):
+        for i in range(self.base_model.num_states):
             # Do not show states that are not outputs
             if not show_hidden_states and i >= num_observed_states:
                 break
@@ -293,7 +291,7 @@ class System:
         A_HISTORY_DELAY_START = FULL_REQ_HISTORY
         A_HISTORY_DELAY_END = A_HISTORY_DELAY_START + REQ_DELAY_A_HISTORY
 
-        NUM_S_TO_ADD = self.num_states - true_states.shape[2]
+        NUM_S_TO_ADD = self.base_model.num_states - true_states.shape[2]
         # TODO fix so the first point is not wasted
         if set_base_history:
             base_hist_s = true_states[:, S_HISTORY_BASE_START:S_HISTORY_BASE_END, :]
@@ -375,7 +373,7 @@ class System:
         else:
             raise TypeError(f'require type list or torch.Tensor but is of type {type(inputs)}')
 
-        opt = optimizer(search_space)
+        opt = optimizer(search_space, population=30000)
         if verbose:
             verbose = ["progress_bar", "print_results", "print_times"]
         opt.search(objective_function, n_iter=epochs, verbosity=verbose)
@@ -446,7 +444,7 @@ class System:
                                                                                      )
 
                 # 1. Simulate delay model and base model (get state_base_out)
-                NUM_S_TO_ADD = self.num_states - true_outputs.shape[2]
+                NUM_S_TO_ADD = self.base_model.num_states - true_outputs.shape[2]
 
                 init_state = torch.cat((true_states_no_history[:, 0, :], torch.zeros((
                     true_states_no_history.shape[0], NUM_S_TO_ADD))), dim=-1)
@@ -537,16 +535,16 @@ class System:
 
             # Check if initial state is provided, if so, check that it is only one state
             if initial_state is not None:
-                if initial_state[i].shape[0] != self.num_states:
+                if initial_state[i].shape[0] != self.base_model.num_states:
                     raise ValueError("Initial state must be of the same size as the number of states")
 
         # Create list of initial states for each bag of data of size 1 x num_states
         if initial_state is None:
             initial_state = []
-            if self.num_states > true_outputs[0].shape[1]:
+            if self.base_model.num_states > true_outputs[0].shape[1]:
                 # Pad initial state with zeros if it is smaller than the number of states
                 for true_output in true_outputs:
-                    init_state = torch.zeros((1, self.num_states))
+                    init_state = torch.zeros((1, self.base_model.num_states))
                     init_state[:, :true_outputs[0].shape[1]] = true_output[0]
                     initial_state.append(init_state)
             else:
@@ -606,8 +604,8 @@ class System:
                 # if we have more states than the true state, then we only want to compare the first N states
                 num_lossy_states = batched_true_outputs[i].shape[-1]
                 # if we are modelling with fewer states than the true state, then we only want to compare the first num_states
-                if num_lossy_states > self.num_states:
-                    num_lossy_states = self.num_states
+                if num_lossy_states > self.base_model.num_states:
+                    num_lossy_states = self.base_model.num_states
 
                 # One-slice t:t+1 allows us to use the same code for batched and unbatched data while preserving correct dimensions
                 loss += loss_func(state_array[..., :num_lossy_states], batched_true_outputs[i][..., :num_lossy_states])
@@ -658,8 +656,8 @@ class System:
 
         json_dict = {}
 
-        json_dict["num_states"] = self.num_states
-        json_dict["num_actions"] = self.num_actions
+        json_dict["num_states"] = self.base_model.num_states
+        json_dict["num_actions"] = self.base_model.num_actions
 
         json_dict["sampling_period"] = self.sampling_period
 
