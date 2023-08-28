@@ -332,12 +332,12 @@ class System:
             # set model parameters
             for param_name in list(nongrad_params_flat.keys()):
                 nongrad_params_flat[param_name].set(para[param_name])
-            # reset model memory
-            self.base_model.reset()
-            # set initial state
-            initial_state = torch.zeros((batch_size, num_states))
 
             for i in range(NUM_SIGNALS):
+                # reset model memory
+                self.base_model.reset()
+                # set initial state
+                initial_state = true_outputs[i, 0, 0:self.base_model.num_states]
                 state_array, _, _ = self.simulate(input_array=inputs[i],
                                                   initial_state=initial_state,
                                                   use_base_model=True,
