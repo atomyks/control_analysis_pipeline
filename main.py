@@ -60,7 +60,7 @@ def main():
         sys.plot_simulation(input_array=input_arr,
                             true_state=output_arr,
                             ax=ax, show_input=True, show_hidden_states=False,
-                            use_delay=True, use_base_model=True, use_error_model=False)
+                            use_base_model=True, use_error_model=False)
     # top right legend
     handles, labels = ax.get_legend_handles_labels()
     fig.legend(handles, labels, loc='upper right')

@@ -53,27 +53,27 @@ class Steeringv2(Model):
 
         # self.max_vel = None
 
-    def forward(self, a_input: torch.tensor, y_last: torch.tensor):
+    def forward(self, action: torch.tensor, state: torch.tensor):
         '''
-        :param a_input: torch.tensor, BATCH x NUM_INPUTS, system action
-        :param y_last: torch.tensor, BATCH x NUM_STATES, system state
+        :param action: torch.tensor, BATCH x NUM_INPUTS, system action
+        :param state: torch.tensor, BATCH x NUM_STATES, system state
         :return:
         '''
 
-        # a_input (BATCH x 1)
-        # y_last (BATCH x 2);  y_last[:, 0] = angle; y_last[:, 1] - steering speed
+        # action (BATCH x 1)
+        # state (BATCH x 2);  state[:, 0] = angle; state[:, 1] - steering speed
 
         # delay
-        delayed_input = self.delay_layer(a_input)
+        delayed_input = self.delay_layer(action)
 
         # Virtual PID regulator
-        error = -(y_last[:, 0] - delayed_input)
+        error = -(state[:, 0] - delayed_input)
         self.integral += error
         T_in = error * self.Kp.get() + self.integral * self.Ki.get() + (self.last_error - error) * self.Kd.get()
         self.last_error = error
 
         # Virtual system
-        y_output = y_last + self.system_get_f(y_last, self.J.get(), T_in, self.b3.get(),
+        y_output = state + self.system_get_f(state, self.J.get(), T_in, self.b3.get(),
                                               self.T_f.get()) * self.dt  # Forward euler
 
         y_output[:, 1] = self.deadzone_layer(y_output[:, 1])
@@ -85,7 +85,7 @@ class Steeringv2(Model):
 
         # self.last_steer_rate = y_output[:, 1] * self.steer_rate_e.get()
 
-        return y_output
+        return y_output, delayed_input
 
     def system_get_f(self, x, J, T_in, b3, T_f):
         # x (BATCH x 2);  x[:, 0] = angle; x[:, 1] - steering speed

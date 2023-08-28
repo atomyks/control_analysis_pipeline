@@ -120,7 +120,7 @@ if __name__ == "__main__":
     initial_state = torch.zeros((1, 2))
     system.base_model.reset()
     steer_predicted, _, _ = system.simulate(input_array=true_u, initial_state=initial_state,
-                                            use_delay=True, use_base_model=True,
+                                            use_base_model=True,
                                             use_error_model=False)
 
     if show_plots:

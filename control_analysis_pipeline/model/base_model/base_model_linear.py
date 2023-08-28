@@ -27,9 +27,9 @@ class BaseLinearModel(Model):
         :param y_last: torch.tensor, BATCH x NUM_STATES, system state
         :return:                
         '''
-
+        u_input_delayed = a_input
         y_now = self.A(y_last) + self.B(a_input)
-        return y_now
+        return y_now, u_input_delayed
 
     def set_model_matrices(self, A=None, B=None):
         '''

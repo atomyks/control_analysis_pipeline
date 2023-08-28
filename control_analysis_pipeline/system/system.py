@@ -1,4 +1,3 @@
-from control_analysis_pipeline.model.delay_model.delay_model import InputDelayModel
 from control_analysis_pipeline.model.base_model.base_model_linear import BaseLinearModel
 import numpy as np
 import torch
@@ -7,13 +6,13 @@ import matplotlib.pyplot as plt
 import json
 import os
 import gradient_free_optimizers as gfo
+import copy
 
 
 # Enum for model selection
 class ModelType:
     BASE = 0
     ERROR = 1
-    DELAY = 2
 
 
 class System:
@@ -35,7 +34,6 @@ class System:
         self.output_data = None
 
         # system delay
-        self.delay_model = None
         self.base_model = BaseLinearModel(num_actions=num_actions, num_states=num_states)
         self.error_model = None
         self.inputs = None
@@ -57,16 +55,13 @@ class System:
                 self.outputs.append(key)
 
     def system_step(self, u_input: torch.tensor, state_now: torch.tensor,
-                    sim_delay=True, sim_base_model=True, sim_error_model=True) -> (torch.tensor, torch.tensor):
-
-        u_input_delayed = u_input
-        if sim_delay and self.delay_model is not None:
-            u_input_delayed = self.delay_model(u_input)
+                    sim_base_model=True, sim_error_model=True) -> (torch.tensor, torch.tensor):
 
         # if we are not simulating the base model, then the base model is just the identity
         state_next = state_now
+        u_input_delayed = u_input
         if sim_base_model:
-            state_next = self.base_model(u_input_delayed, state_now)
+            state_next, u_input_delayed = self.base_model(u_input, state_now)
 
         error = torch.zeros((state_now.shape[0], self.base_model.num_states))
         if sim_error_model and self.error_model is not None:
@@ -76,11 +71,10 @@ class System:
         return state_next, u_input_delayed, error
 
     def simulate(self, input_array: torch.tensor, initial_state: torch.tensor = None,
-                 use_delay=True, use_base_model=True, use_error_model=True):
+                 use_base_model=True, use_error_model=True):
         """
         :param input_array: torch.tensor, (BATCH x TIME x NUM_INPUTS) or (TIME x NUM_INPUTS)
         :param initial_state: torch.tensor, (BATCH x NUM_INPUTS)
-        :param use_delay:
         :param use_base_model:
         :param use_error_model:
         :return:
@@ -105,7 +99,7 @@ class System:
 
         for t in range(time_length):
             # One-slice t:t+1 allows us to use the same code for batched and unbatched data while preserving correct dimensions
-            state, action_delayed, error = self.system_step(input_array[..., t, :], state, use_delay, use_base_model,
+            state, action_delayed, error = self.system_step(input_array[..., t, :], state, use_base_model,
                                                             use_error_model)
 
             error_correct_dim = torch.cat((
@@ -121,12 +115,11 @@ class System:
     def plot_simulation(self, input_array: torch.tensor, initial_state: torch.tensor = None,
                         true_state: torch.tensor = None,
                         ax: plt.Axes = None, show_hidden_states=True, show_input=True,
-                        use_delay=True, use_base_model=True, use_error_model=True):
+                        use_base_model=True, use_error_model=True):
         """
         :param input_array: torch.tensor, (TIME x NUM_INPUTS)
         :param initial_state: torch.tensor, (1 x NUM_STATES)
         :param true_state: torch.tensor, (TIME x NUM_STATES)
-        :param use_delay:
         :param use_base_model:
         :param use_error_model:
         :return:
@@ -137,7 +130,6 @@ class System:
             # state_array (TIME x STATES)
             state_array, _, _ = self.simulate(input_array,
                                               initial_state=initial_state,
-                                              use_delay=use_delay,
                                               use_base_model=use_base_model,
                                               use_error_model=use_error_model)
 
@@ -231,8 +223,6 @@ class System:
     #     pass
 
     def init_learning(self, batch_size):
-        if self.delay_model is not None:
-            self.delay_model.init_learning(batch_size)
         self.base_model.init_learning()
 
     def learn_delay(self, inputs: torch.tensor, true_outputs: torch.tensor, initial_state: torch.tensor = None,
@@ -243,7 +233,6 @@ class System:
     def set_system_history(self,
                            actions: torch.tensor,
                            true_states: torch.tensor or list[torch.tensor],
-                           set_delay_history: bool = False,
                            set_base_history: bool = False,
                            set_error_history: bool = False,
                            ):
@@ -256,7 +245,6 @@ class System:
         :return:
         """
         # reset all history
-        self.delay_model.reset()
         self.base_model.reset_history()
         self.error_model.reset_history()
 
@@ -264,6 +252,10 @@ class System:
             REQ_DELAY_A_HISTORY = int(self.delay_model.get_delay_val())
         else:
             REQ_DELAY_A_HISTORY = 0
+        # if set_delay_history:
+        #     REQ_DELAY_A_HISTORY = int(self.delay_model.get_delay_val())
+        # else:
+        #     REQ_DELAY_A_HISTORY = 0
 
         if set_base_history:
             REQ_BASE_A_HISTORY = self.base_model.reg.action_history_size
@@ -288,8 +280,8 @@ class System:
         A_HISTORY_BASE_START = FULL_REQ_HISTORY - REQ_BASE_A_HISTORY
         S_HISTORY_ERROR_START = FULL_REQ_HISTORY - REQ_ERROR_S_HISTORY
         A_HISTORY_ERROR_START = FULL_REQ_HISTORY - REQ_ERROR_A_HISTORY
-        A_HISTORY_DELAY_START = FULL_REQ_HISTORY
-        A_HISTORY_DELAY_END = A_HISTORY_DELAY_START + REQ_DELAY_A_HISTORY
+        # A_HISTORY_DELAY_START = FULL_REQ_HISTORY
+        # A_HISTORY_DELAY_END = A_HISTORY_DELAY_START + REQ_DELAY_A_HISTORY
 
         NUM_S_TO_ADD = self.base_model.num_states - true_states.shape[2]
         # TODO fix so the first point is not wasted
@@ -309,14 +301,15 @@ class System:
                     (error_hist_s, torch.zeros((error_hist_s.shape[0], error_hist_s.shape[1], NUM_S_TO_ADD))), dim=-1)
             )
 
-        if set_delay_history:
-            self.delay_model.set_history(
-                history=actions[:, A_HISTORY_DELAY_START:A_HISTORY_DELAY_END, :]
-            )
+        # if set_delay_history:
+        #     self.delay_model.set_history(
+        #         history=actions[:, A_HISTORY_DELAY_START:A_HISTORY_DELAY_END, :]
+        #     )
 
-        actions_no_history = torch.cat((actions[:, A_HISTORY_DELAY_END:, :],
-                                        torch.zeros((actions.shape[0], A_HISTORY_DELAY_END - A_HISTORY_DELAY_START,
+        actions_no_history = torch.cat((actions[:, FULL_REQ_HISTORY:, :],
+                                        torch.zeros((actions.shape[0], actions.shape[1] - FULL_REQ_HISTORY,
                                                      actions.shape[2]))), dim=1)
+
         true_states_no_history = true_states[:, FULL_REQ_HISTORY:, :]
 
         return actions_no_history, true_states_no_history
@@ -349,8 +342,9 @@ class System:
             initial_state = torch.zeros((batch_size, num_states))
 
             for i in range(NUM_SIGNALS):
-                state_array, _, _ = self.simulate(input_array=inputs[i], initial_state=initial_state,
-                                                  use_delay=True, use_base_model=True,
+                state_array, _, _ = self.simulate(input_array=inputs[i],
+                                                  initial_state=initial_state,
+                                                  use_base_model=True,
                                                   use_error_model=False)
 
                 loss += self.base_model.loss_fn(state_array[i], true_outputs[i, 1:, 0:state_array.shape[-1]])
@@ -436,22 +430,22 @@ class System:
         with torch.no_grad():
             for i in range(NUM_SIGNALS):
                 # 0. Setup history for input delay model and base model
-                actions_no_history, true_states_no_history = self.set_system_history(inputs,
-                                                                                     true_outputs,
-                                                                                     set_delay_history=False,
-                                                                                     set_base_history=False,
-                                                                                     set_error_history=True,
-                                                                                     )
+                # actions_no_history, true_states_no_history = self.set_system_history(inputs,
+                #                                                                      true_outputs,
+                #                                                                      set_base_history=False,
+                #                                                                      set_error_history=True,
+                #                                                                      )
+                actions_no_history = inputs
+                true_states_no_history = true_outputs
 
                 # 1. Simulate delay model and base model (get state_base_out)
                 NUM_S_TO_ADD = self.base_model.num_states - true_outputs.shape[2]
 
                 init_state = torch.cat((true_states_no_history[:, 0, :], torch.zeros((
                     true_states_no_history.shape[0], NUM_S_TO_ADD))), dim=-1)
-
                 predicted_states, action_delayed, error_array = self.simulate(input_array=actions_no_history,
                                                                               initial_state=init_state,
-                                                                              use_delay=True, use_base_model=True,
+                                                                              use_base_model=True,
                                                                               use_error_model=False)
 
                 error = true_states_no_history[:, 1:, :] - predicted_states[:, :, :true_outputs.shape[2]]
@@ -485,7 +479,7 @@ class System:
         # 6. Clean after training
         self.error_model.eval()
 
-        self.delay_model.reset()
+        # self.delay_model.reset()
         self.base_model.reset_history()
         self.error_model.reset_history()
 
@@ -599,7 +593,7 @@ class System:
             loss_above_threshold = False
             for i in range(len(batched_inputs)):
                 optim.zero_grad()
-                state_array, _, _ = self.simulate(batched_inputs[i], batched_initial_state[i], True, True, False)
+                state_array, _, _ = self.simulate(batched_inputs[i], batched_initial_state[i], True, False)
                 loss = 0.0
                 # if we have more states than the true state, then we only want to compare the first N states
                 num_lossy_states = batched_true_outputs[i].shape[-1]
@@ -665,8 +659,6 @@ class System:
             json_dict["base_model"] = self.base_model.get_json_repr()
         if self.error_model is not None:
             json_dict["error_model"] = self.error_model.get_json_repr()
-        if self.delay_model is not None:
-            json_dict["delay_model"] = self.delay_model.get_json_repr()
 
         # Save to file
         with open(file_name, 'w') as outfile:

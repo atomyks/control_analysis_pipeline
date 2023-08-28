@@ -122,25 +122,26 @@ if __name__ == "__main__":
                          optimizer=torch.optim.Adam,
                          learning_rate=0.008)
 
-    true_outputs = copy.deepcopy(true_s).reshape((1, true_s.shape[0], true_s.shape[1]))
+    # true_outputs = copy.deepcopy(true_s).reshape((1, true_s.shape[0], true_s.shape[1]))
+    #
+    # # simulate base model
+    # actions_no_history, true_states_no_history = sys.set_system_history(
+    #     copy.deepcopy(true_u).reshape((1, true_u.shape[0], true_u.shape[1])),
+    #     true_outputs,
+    #     set_base_history=True,
+    #     set_error_history=True,
+    # )
 
-    # simulate base model
-    actions_no_history, true_states_no_history = sys.set_system_history(
-        copy.deepcopy(true_u).reshape((1, true_u.shape[0], true_u.shape[1])),
-        true_outputs,
-        set_delay_history=True,
-        set_base_history=True,
-        set_error_history=True,
-    )
+    actions_no_history = copy.deepcopy(true_u).reshape((1, true_u.shape[0], true_u.shape[1]))
+    true_states_no_history = copy.deepcopy(true_s).reshape((1, true_s.shape[0], true_s.shape[1]))
 
-    NUM_S_TO_ADD = sys.num_states - true_outputs.shape[2]
+    NUM_S_TO_ADD = sys.base_model.num_states - true_states_no_history.shape[2]
 
     init_state = torch.cat((true_states_no_history[:, 0, :], torch.zeros((
         true_states_no_history.shape[0], NUM_S_TO_ADD))), dim=-1)
 
     predicted_states, action_delayed, error_array = sys.simulate(input_array=actions_no_history,
                                                                  initial_state=init_state,
-                                                                 use_delay=True,
                                                                  use_base_model=True,
                                                                  use_error_model=False)
 
@@ -148,30 +149,31 @@ if __name__ == "__main__":
 
     if show_plots:
         y1_ax[1].plot(time_axis[:-1].detach().numpy(), true_u[:, 0].detach().numpy(), 'g', label="u1")
-        y1_ax[1].plot(time_axis.detach().numpy()[9:], predicted_states[0, :, 0].detach().numpy(), 'k', label="u2")
-        y1_ax[1].plot(time_axis.detach().numpy()[9:], predicted_states[0, :, 1].detach().numpy(), 'b', label="s1")
+        y1_ax[1].plot(time_axis.detach().numpy()[1:], predicted_states[0, :, 0].detach().numpy(), 'k', label="u2")
+        y1_ax[1].plot(time_axis.detach().numpy()[1:], predicted_states[0, :, 1].detach().numpy(), 'b', label="s1")
         y1_ax[1].legend()
         # plt.show()
 
     # simulate base + error model
 
-    true_outputs = copy.deepcopy(true_s).reshape((1, true_s.shape[0], true_s.shape[1]))
-    actions_no_history, true_states_no_history = sys.set_system_history(
-        copy.deepcopy(true_u).reshape((1, true_u.shape[0], true_u.shape[1])),
-        true_outputs,
-        set_delay_history=True,
-        set_base_history=True,
-        set_error_history=True,
-    )
+    # true_outputs = copy.deepcopy(true_s).reshape((1, true_s.shape[0], true_s.shape[1]))
+    # actions_no_history, true_states_no_history = sys.set_system_history(
+    #     copy.deepcopy(true_u).reshape((1, true_u.shape[0], true_u.shape[1])),
+    #     true_outputs,
+    #     set_base_history=True,
+    #     set_error_history=True,
+    # )
 
-    NUM_S_TO_ADD = sys.num_states - true_outputs.shape[2]
+    actions_no_history = copy.deepcopy(true_u).reshape((1, true_u.shape[0], true_u.shape[1]))
+    true_states_no_history = copy.deepcopy(true_s).reshape((1, true_s.shape[0], true_s.shape[1]))
+
+    NUM_S_TO_ADD = sys.base_model.num_states - true_states_no_history.shape[2]
 
     init_state = torch.cat((true_states_no_history[:, 0, :], torch.zeros((
         true_states_no_history.shape[0], NUM_S_TO_ADD))), dim=-1)
 
     predicted_states, action_delayed, error_array = sys.simulate(input_array=copy.deepcopy(true_u).reshape((1, true_u.shape[0], true_u.shape[1])),
                                                                  initial_state=init_state,
-                                                                 use_delay=True,
                                                                  use_base_model=True,
                                                                  use_error_model=True)
 

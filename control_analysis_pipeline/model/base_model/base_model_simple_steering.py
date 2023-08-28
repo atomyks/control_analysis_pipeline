@@ -31,23 +31,23 @@ class SimpleSteering(Model):
 
         self.loss_fn = nn.L1Loss()
 
-    def forward(self, a_input: torch.tensor, y_last: torch.tensor):
+    def forward(self, action: torch.tensor, state: torch.tensor):
         '''
-        :param a_input: torch.tensor, BATCH x NUM_INPUTS, system action
-        :param y_last: torch.tensor, BATCH x NUM_STATES, system state
+        :param action: torch.tensor, BATCH x NUM_INPUTS, system action
+        :param state: torch.tensor, BATCH x NUM_STATES, system state
         :return:
         '''
 
-        a_input_delayed = self.delay_layer(a_input)
+        action_delayed = self.delay_layer(action)
 
-        error = -(y_last - a_input_delayed)
+        error = -(state - action_delayed)
         steer_rate = self.deadzone_layer(error + self.last_steer_rate) / self.time_const.get()
 
         steer_rate = min(max(steer_rate, -3.0), 3.0)  # limit for steering velocity
-        y_output = y_last + steer_rate * self.dt  # Forward euler
+        y_output = state + steer_rate * self.dt  # Forward euler
         self.last_steer_rate = steer_rate * self.steer_rate_e.get()
 
-        return y_output
+        return y_output, action_delayed
 
     def reset(self):
         self.last_steer_rate = 0.0
