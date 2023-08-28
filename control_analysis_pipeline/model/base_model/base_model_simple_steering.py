@@ -22,7 +22,7 @@ class SimpleSteering(Model):
         self.time_const = NongradParameter(torch.zeros((1,)), lb=0.01, ub=0.2, precision=0.05)
         self.register_nongrad_parameter(name="time_constant", value=self.time_const)
 
-        self.steer_rate_e = NongradParameter(torch.zeros((1,)), lb=0.0, ub=0.12, precision=0.001)
+        self.steer_rate_e = NongradParameter(torch.zeros((1,)), lb=0.0, ub=0.01, precision=0.001)
         self.register_nongrad_parameter(name="steer_rate_e", value=self.steer_rate_e)
 
         self.dt = dt
