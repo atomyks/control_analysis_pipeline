@@ -248,10 +248,6 @@ class System:
         self.base_model.reset_history()
         self.error_model.reset_history()
 
-        if set_delay_history:
-            REQ_DELAY_A_HISTORY = int(self.delay_model.get_delay_val())
-        else:
-            REQ_DELAY_A_HISTORY = 0
         # if set_delay_history:
         #     REQ_DELAY_A_HISTORY = int(self.delay_model.get_delay_val())
         # else:
@@ -450,9 +446,9 @@ class System:
 
                 error = true_states_no_history[:, 1:, :] - predicted_states[:, :, :true_outputs.shape[2]]
 
-                train_s = predicted_states
-                train_u = action_delayed
-                train_y = error
+                train_s.append(predicted_states[0][:-1, :])
+                train_u.append(action_delayed[0][1:, :])
+                train_y.append(error[0][1:, :])
 
                 # 2. Generate base model error (error = true_output - state_base_out)
 

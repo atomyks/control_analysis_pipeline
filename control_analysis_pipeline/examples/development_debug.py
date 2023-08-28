@@ -5,7 +5,7 @@ from control_analysis_pipeline.system.system import System
 import matplotlib.pyplot as plt
 
 
-def testing_model(a, s, dt):
+def example_model(a, s, dt):
     """
     :param a:
     :param s:
@@ -24,9 +24,6 @@ if __name__ == "__main__":
 
     sys = System(num_actions=1, num_states=3)
 
-    sys.delay_model.set_delay_val(5)
-
-
 
     # sys.base_model.reg.state_history_size = 4
     # sys.base_model.reg.action_history_size = 4
@@ -43,17 +40,17 @@ if __name__ == "__main__":
     print(sys.base_model)
 
     sys.error_model = ErrorGPModel(num_actions=1, num_states=3, num_errors=2,
-                                   action_history_size=8,
-                                   state_history_size=8)
+                                   action_history_size=1,
+                                   state_history_size=1)
 
-    for i in range(8):
-        s_def = [(-i, 0)]
-        new_regressor = lambda a, s: s[0]
-        sys.error_model.reg.add(new_regressor, s_defs=s_def)
-    for i in range(8):
-        a_def = [(-i, 0)]
-        new_regressor = lambda a, s: a[0]
-        sys.error_model.reg.add(new_regressor, a_defs=a_def)
+    # for i in range(8):
+    #     s_def = [(-i, 0)]
+    #     new_regressor = lambda a, s: s[0]
+    #     sys.error_model.reg.add(new_regressor, s_defs=s_def)
+    # for i in range(8):
+    #     a_def = [(-i, 0)]
+    #     new_regressor = lambda a, s: a[0]
+    #     sys.error_model.reg.add(new_regressor, a_defs=a_def)
     print("-----------------Printing error model-----------------")
     print(sys.error_model)
 
@@ -72,7 +69,7 @@ if __name__ == "__main__":
         action = torch.sin(time_axis[i, 0]) * 2.0
         true_u[i, :] = action
 
-        state = testing_model(a=action, s=state, dt=dt)
+        state = example_model(a=action, s=state, dt=dt)
         true_s[i + 1, :] = state
     # true_u = torch.sign(torch.cos(time_axis[:-1] * 15.0))
     #
@@ -80,7 +77,7 @@ if __name__ == "__main__":
     #
     # for i in range(5000):
     #     dt = 0.1
-    #     testing_model(a, s)
+    #     example_model(a, s)
     #
     #
     #
@@ -120,7 +117,7 @@ if __name__ == "__main__":
     sys.learn_error_grad(inputs=true_u, true_outputs=true_s,
                          verbose=True, epochs=1000,
                          optimizer=torch.optim.Adam,
-                         learning_rate=0.008)
+                         learning_rate=0.01)
 
     # true_outputs = copy.deepcopy(true_s).reshape((1, true_s.shape[0], true_s.shape[1]))
     #
