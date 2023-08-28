@@ -1,6 +1,5 @@
 import torch
-import torch.nn as nn
-from control_analysis_pipeline.model.base_model.base_model_simple_steering import SimpleSteering
+from control_analysis_pipeline.model.base_model.base_model_steering_v2 import Steeringv2
 from control_analysis_pipeline.model.delay_model.delay_model import InputDelayModel
 import matplotlib.pyplot as plt
 from control_analysis_pipeline.system.system import System
@@ -34,8 +33,6 @@ if __name__ == "__main__":
     Bl = 0.0011  # 0.00178745
     Br = 0.0011  # 0.00178745
     D = 5
-    e = 0.87
-    e2 = 0.8
 
     Kp = 25.0
     Ki = 0.012
@@ -60,7 +57,7 @@ if __name__ == "__main__":
     ), dim=0)
     true_s = torch.zeros((time_axis.shape[0], 2))
 
-    state = torch.tensor([10., 10.])
+    state = torch.tensor([0., 0.])
     true_s[0, :] = state
 
     u_virt = torch.zeros((cmd.shape[0] - D,))
@@ -81,7 +78,7 @@ if __name__ == "__main__":
 
         action = delay_model(cmd[i])
 
-        error = -(u_virt[i] - (action))
+        error = -(u_virt[i] - action)
         integral += error
         T_in = error * Kp + integral * Ki + (last_error - error) * Kd
         last_error = error
@@ -90,7 +87,6 @@ if __name__ == "__main__":
         true_s[i, 0] = x[0]
         true_s[i, 1] = x[1]
         u_virt[i + 1] = x[0]
-        last_steer_rate = x[1] * e
 
     show_plots = True
 
@@ -109,18 +105,19 @@ if __name__ == "__main__":
     # -----------------------------------GENERATE TRAINING DATA DONE---------------------------------------------
 
     # Learn system
-    system = System(num_states=1, num_actions=1)
-    system.base_model = SimpleSteering()
+    system = System(num_states=2, num_actions=1)
+    # system.base_model = SimpleSteering()
+    system.base_model = Steeringv2()
     print("--------------------------TEST--------------------------")
-
-    system.nongrad_learn_base_model(inputs=true_u,
-                                    true_outputs=true_s,
-                                    optimizer=gfo.EvolutionStrategyOptimizer,
-                                    epochs=200,
+    import copy
+    system.nongrad_learn_base_model(inputs=copy.deepcopy(true_u),
+                                    true_outputs=copy.deepcopy(true_s),
+                                    optimizer=gfo.ParticleSwarmOptimizer,
+                                    epochs=500,
                                     verbose=True)
 
     # Simulate learned system
-    initial_state = torch.zeros((1, 1))
+    initial_state = torch.zeros((1, 2))
     system.base_model.reset()
     steer_predicted, _, _ = system.simulate(input_array=true_u, initial_state=initial_state,
                                             use_delay=True, use_base_model=True,
