@@ -24,6 +24,12 @@ data_to_load:
     topic: "/control/vehicle_cmd_gate/operation_mode"
     var: "is_autoware_control_enabled"
     type: "enable"
+  speed_filter:
+    topic: "/pacmod/vehicle_speed_rpt"
+    var: "vehicle_speed"
+    type: "filtering"
+    operator: "gt"  # gt, lt, eq, ge, le
+    val: 0.5
 #  vel:
 #    topic: "/control/vehicle_cmd_gate/operation_mode"
 #    var: "is_autoware_control_enabled"

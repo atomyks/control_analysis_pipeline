@@ -70,7 +70,7 @@ class DataPreprocessor:
                 self.loaded_data[i][key]["time_stamp"] = res[0]
                 self.loaded_data[i][key]["data"] = res[j + 1]
 
-    def filter_data_on_enable(self):
+    def filter_data(self):
         """
         This function filters data that are gathered while car is in manual mode.
         Warning! This function assumes that the data are synchronized and sampled with period = "self.resampling_period"
@@ -93,6 +93,21 @@ class DataPreprocessor:
                         data_enabled = self.loaded_data[i][key]["data"]
                     else:
                         data_enabled = np.logical_and(data_enabled, self.loaded_data[i][key]["data"])
+                if self.data_to_load[key]["type"] == "filtering":
+                    enable_signal = None
+                    if self.data_to_load[key]["operator"] == "gt":
+                        enable_signal = self.loaded_data[i][key]["data"] > self.data_to_load[key]["val"]
+                    if self.data_to_load[key]["operator"] == "lt":
+                        enable_signal = self.loaded_data[i][key]["data"] < self.data_to_load[key]["val"]
+                    if self.data_to_load[key]["operator"] == "ge":
+                        enable_signal = self.loaded_data[i][key]["data"] >= self.data_to_load[key]["val"]
+                    if self.data_to_load[key]["operator"] == "le":
+                        enable_signal = self.loaded_data[i][key]["data"] <= self.data_to_load[key]["val"]
+
+                    if data_enabled is None:
+                        data_enabled = enable_signal
+                    else:
+                        data_enabled = np.logical_and(data_enabled, enable_signal)
 
             res_arr = filer_signal_on_enabled(data,
                                               data_enabled,
