@@ -337,13 +337,18 @@ class System:
                 # reset model memory
                 self.base_model.reset()
                 # set initial state
-                initial_state = true_outputs[i, 0, 0:self.base_model.num_states]
+                # initial_state = true_outputs[i, 0, 0:self.base_model.num_states]
+
+                NUM_S_TO_ADD = self.base_model.num_states - true_outputs[i].shape[-1]
+                initial_state = torch.cat((true_outputs[i][0, :].reshape((1, true_outputs[i].shape[-1])), torch.zeros((
+                    batch_size, NUM_S_TO_ADD))), dim=-1)
+
                 state_array, _, _ = self.simulate(input_array=inputs[i],
                                                   initial_state=initial_state,
                                                   use_base_model=True,
                                                   use_error_model=False)
 
-                loss += self.base_model.loss_fn(state_array[i], true_outputs[i, 1:, 0:state_array.shape[-1]])
+                loss += self.base_model.loss_fn(state_array[0, :, 0:true_outputs[i].shape[-1]], true_outputs[i][1:, :])
 
             score = -loss
             return score
@@ -363,7 +368,7 @@ class System:
         else:
             raise TypeError(f'require type list or torch.Tensor but is of type {type(inputs)}')
 
-        opt = optimizer(search_space, population=30000)
+        opt = optimizer(search_space, population=10000)
         if verbose:
             verbose = ["progress_bar", "print_results", "print_times"]
         opt.search(objective_function, n_iter=epochs, verbosity=verbose)
