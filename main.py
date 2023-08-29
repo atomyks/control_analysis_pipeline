@@ -26,9 +26,11 @@ def main():
     print(f"---------------Data loading done---------------")
     data_preprocessor.sync_data()
     # data_preprocessor.plot_all_data(["steer_status", "steer_cmd"])
-    data_preprocessor.filter_data_on_enable()
+    # data_preprocessor.plot_all_data(["speed_filter"])
+    data_preprocessor.filter_data()
     # data_preprocessor.plot_all_data(["steer_status", "steer_cmd"])
     # data_preprocessor.save_all_data(["steer_status", "steer_cmd"])
+    # data_preprocessor.plot_all_data(["speed_filter"])
 
     data = data_preprocessor.get_preprocessed_data()
 

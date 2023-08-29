@@ -24,6 +24,12 @@ data_to_load:
     topic: "/control/vehicle_cmd_gate/operation_mode"
     var: "is_autoware_control_enabled"
     type: "enable"
+  speed_filter:
+    topic: "/pacmod/vehicle_speed_rpt"
+    var: "vehicle_speed"
+    type: "filtering"
+    operator: "gt"  # gt, lt, eq, ge, le
+    val: 0.5
 #  vel:
 #    topic: "/control/vehicle_cmd_gate/operation_mode"
 #    var: "is_autoware_control_enabled"
@@ -53,8 +59,3 @@ data_to_load:
 #    np.array([0...0])  # 2 X N
 #  names:
 #    ['acc', "vel"]
-
-# Should not be used anymore
-valid_data_enabled:
-  - "aw_enabled"
-  - "pacmode_enabled"
