@@ -8,24 +8,26 @@ from yaml import Loader
 import time
 import os
 
-def dlqr(A,B,Q,R):
+
+def dlqr(A, B, Q, R):
     """Solve the discrete time lqr controller.
     
     x[k+1] = A x[k] + B u[k]
     
     cost = sum x[k].T*Q*x[k] + u[k].T*R*u[k]
     """
-    #ref Bertsekas, p.151 - http://www.mwm.im/lqr-controllers-with-python/
-    
-    #first, try to solve the ricatti equation
+    # ref Bertsekas, p.151 - http://www.mwm.im/lqr-controllers-with-python/
+
+    # first, try to solve the ricatti equation
     P = np.matrix(scipy.linalg.solve_discrete_are(A, B, Q, R))
-    
-    #compute the LQR gain
-    K = np.matrix(scipy.linalg.inv(B.T*P*B+R)*(B.T*P*A))
-    
-    eigVals, eigVecs = scipy.linalg.eig(A-B*K)
-    
+
+    # compute the LQR gain
+    K = np.matrix(scipy.linalg.inv(B.T * P * B + R) * (B.T * P * A))
+
+    eigVals, eigVecs = scipy.linalg.eig(A - B * K)
+
     return K, P, eigVals
+
 
 def main():
     config = None
@@ -46,7 +48,7 @@ def main():
     inputs_arr = []
     outputs_arr = []
     initial_states = []
-    
+
     learn_with_controller = False
     with_noise = False
     Q = np.eye(2)
@@ -70,17 +72,17 @@ def main():
         # Initialize output and input tensors for the simulation as empty tensors
         output_tensor = torch.empty((0, 2))
         input_tensor = torch.empty((0, 1))
-        
+
         for i in range(simulation_horizon):
             if learn_with_controller:
                 u = -K @ x
             else:
                 # oscillating input to excite the system
-                u = np.array([[-1.0 * np.sin(0.1 * (j+i))]])
+                u = np.array([[-1.0 * np.sin(0.1 * (j + i))]])
 
             # Simulate the system
             x = sys.base_model.A.weight.detach().numpy() @ x + sys.base_model.B.weight.detach().numpy() @ u
-            
+
             if with_noise:
                 # Add noise to the state
                 xobs = x + 0.1 * np.random.randn(2, 1)
@@ -90,7 +92,7 @@ def main():
             # Append the state and input to the input and output arrays
             input_tensor = torch.cat((input_tensor, torch.from_numpy(u).reshape((1, 1))), dim=0)
             output_tensor = torch.cat((output_tensor, torch.from_numpy(xobs.T).reshape((1, 2))), dim=0)
-        
+
         inputs_arr.append(input_tensor.detach().float())
         outputs_arr.append(output_tensor.detach().float())
 
@@ -120,9 +122,9 @@ def main():
     # # Initialize the model matrices with the true model matrices
     # learned_sys.set_linear_model_matrices(A=sys.base_model.A.weight.detach(),
     #                                         B=sys.base_model.B.weight.detach())
-    
+
     learned_sys.parse_config(config)
-    
+
     ## Uncomment the following lines to learn the model with fixed B-matrix
     # # Set only B-matrix to the true model matrices
     # learned_sys.set_linear_model_matrices(A=None,B=torch.zeros_like(sys.base_model.B.weight.detach()))
@@ -130,14 +132,14 @@ def main():
     # # Freeze the B-matrix of the learned model
     # for param in learned_sys.base_model.B.parameters():
     #     param.requires_grad = False
-    
+
     tick = time.time()
     learned_sys.learn_base_grad(inputs=inputs_arr,
-                           true_outputs=outputs_arr,
-                           initial_state=initial_states,
-                           batch_size=10,
-                           stop_threshold=1e-5,
-                           epochs=100)
+                                true_outputs=outputs_arr,
+                                initial_state=initial_states,
+                                batch_size=10,
+                                stop_threshold=1e-5,
+                                epochs=100)
     tock = time.time()
     print('Time taken to learn the model: ', tock - tick)
 
@@ -148,14 +150,13 @@ def main():
     print('Learned B: ', learned_sys.base_model.B.weight)
 
     # Plot simulation results of first 25 bags of data
-    fig, axs = plt.subplots(5,5)
-    for bag_idx, ax  in enumerate(axs.ravel()):
+    fig, axs = plt.subplots(5, 5)
+    for bag_idx, ax in enumerate(axs.ravel()):
         # Plot the simulation of the learned model
-        input_arr =inputs_arr[bag_idx]
+        input_arr = inputs_arr[bag_idx]
         output_arr = outputs_arr[bag_idx]
         initial_state = initial_states[bag_idx]
 
-        
         learned_sys.plot_simulation(input_array=input_arr,
                                     true_state=output_arr,
                                     initial_state=initial_state,
@@ -172,12 +173,12 @@ def main():
     inputs_arr = []
     outputs_arr = []
     initial_states = []
-    
+
     Q = np.eye(2)
     R = np.eye(1)
     Kbase, _, _ = dlqr(sys.base_model.A.weight.detach().numpy(),
-                         sys.base_model.B.weight.detach().numpy(),
-                         Q, R)
+                       sys.base_model.B.weight.detach().numpy(),
+                       Q, R)
     Klearned, _, _ = dlqr(learned_sys.base_model.A.weight.detach().numpy(),
                           learned_sys.base_model.B.weight.detach().numpy(),
                           Q, R)
@@ -187,7 +188,7 @@ def main():
         xlearned = x_init.copy()
         ubase = -Kbase @ x
         ulearned = -Klearned @ x
-        
+
         # Append the initial state twice to the initial states array
         initial_states.append(torch.from_numpy(x_init.T))
         initial_states.append(torch.from_numpy(x_init.T))
@@ -203,7 +204,7 @@ def main():
             # Append the state and input to the input and output arrays
             input_tensor = torch.cat((input_tensor, torch.from_numpy(ubase).reshape((1, 1))), dim=0)
             output_tensor = torch.cat((output_tensor, torch.from_numpy(xbase.T).reshape((1, 2))), dim=0)
-            
+
         inputs_arr.append(input_tensor.detach())
         outputs_arr.append(output_tensor.detach())
 
@@ -236,6 +237,7 @@ def main():
 
     # Save the learned model
     learned_sys.save_to_json(os.path.dirname(__file__) + '/saved_models/learned_model.json')
-    
+
+
 if __name__ == "__main__":
     main()
