@@ -14,7 +14,6 @@ class DataPreprocessor:
         self.resampling_period = None
 
         self.loaded_data = None
-        self.valid_data_enabled = []
         self.minimum_signal_length = 0.0
         self.discard_after_enable = 0.5
         self.data_to_load = {}
@@ -26,7 +25,6 @@ class DataPreprocessor:
         self.resampling_period = config["resampling_period"]
         self.minimum_signal_length = config["minimum_signal_length"]
         self.discard_after_enable = config["discard_after_enable"]
-        self.valid_data_enabled = config["valid_data_enabled"]
 
     def get_file_names_to_load(self, suffix='.mcap'):
         return sorted(self.in_files_dir.glob(f'**/*{suffix}'))
@@ -78,8 +76,6 @@ class DataPreprocessor:
         Warning! This function assumes that the data are synchronized and sampled with period = "self.resampling_period"
         :return:
         """
-        if self.valid_data_enabled is None or len(self.valid_data_enabled) == 0:
-            return
 
         filtered_data_arr = []
         for i in range(len(self.loaded_data)):
@@ -91,11 +87,12 @@ class DataPreprocessor:
                     data = np.vstack((data, self.loaded_data[i][key]["data"]))
 
             data_enabled = None
-            for key in self.valid_data_enabled:
-                if data_enabled is None:
-                    data_enabled = self.loaded_data[i][key]["data"]
-                else:
-                    data_enabled = np.logical_and(data_enabled, self.loaded_data[i][self.valid_data_enabled[0]]["data"])
+            for key in list(self.loaded_data[i].keys()):
+                if self.data_to_load[key]["type"] == "enable":
+                    if data_enabled is None:
+                        data_enabled = self.loaded_data[i][key]["data"]
+                    else:
+                        data_enabled = np.logical_and(data_enabled, self.loaded_data[i][key]["data"])
 
             res_arr = filer_signal_on_enabled(data,
                                               data_enabled,
