@@ -16,6 +16,7 @@ class InputDelayModel(Model):
         self.batch_size = 1
         self.delay_parm.set(0)
         self.input_queue = None
+        self.output_unless_full = None
 
     def init_learning(self, batch_size):
         '''
@@ -34,17 +35,28 @@ class InputDelayModel(Model):
 
     def forward(self, u_input: torch.tensor):
         if self.delay_parm.get() > 0:
-            y_output = self.input_queue.get()
-            self.input_queue.put(u_input.reshape((self.batch_size, self.num_actions)))
+            if self.input_queue.empty():
+                self.input_queue.put(u_input.reshape((self.batch_size, self.num_actions)))
+                self.output_unless_full = u_input.reshape((self.batch_size, self.num_actions))
+                y_output = u_input.reshape((self.batch_size, self.num_actions))
+            elif not self.input_queue.full():
+                self.input_queue.put(u_input.reshape((self.batch_size, self.num_actions)))
+                y_output = self.output_unless_full
+            else:
+                y_output = self.input_queue.get()
+                self.input_queue.put(u_input.reshape((self.batch_size, self.num_actions)))
         else:
             y_output = u_input.reshape((self.batch_size, self.num_actions))
         return y_output
 
-    def reset(self):
+    def reset(self, init_mode="mirror"):  # mirror, zero
         self.input_queue = queue.Queue(maxsize=self.delay_parm.get())
         for i in range(self.delay_parm.get()):
-            u = torch.zeros((self.batch_size, self.num_actions))
-            self.input_queue.put(u)
+            if init_mode == "mirror":
+                return
+            if init_mode == "zero":
+                u = torch.zeros((self.batch_size, self.num_actions))
+                self.input_queue.put(u)
 
     def set_history(self, history: torch.tensor):
         """
