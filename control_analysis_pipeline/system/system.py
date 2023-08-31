@@ -438,18 +438,17 @@ class System:
                 #                                                                      )
                 actions_no_history = inputs
                 true_states_no_history = true_outputs
-
                 # 1. Simulate delay model and base model (get state_base_out)
-                NUM_S_TO_ADD = self.base_model.num_states - true_outputs.shape[2]
+                NUM_S_TO_ADD = self.base_model.num_states - true_outputs[i].shape[-1]
 
-                init_state = torch.cat((true_states_no_history[:, 0, :], torch.zeros((
-                    true_states_no_history.shape[0], NUM_S_TO_ADD))), dim=-1)
-                predicted_states, action_delayed, error_array = self.simulate(input_array=actions_no_history,
+                init_state = torch.cat((true_states_no_history[i][0:1, :], torch.zeros((1, NUM_S_TO_ADD))), dim=-1)
+                self.base_model.reset()
+                predicted_states, action_delayed, error_array = self.simulate(input_array=actions_no_history[i],
                                                                               initial_state=init_state,
                                                                               use_base_model=True,
                                                                               use_error_model=False)
 
-                error = true_states_no_history[:, 1:, :] - predicted_states[:, :, :true_outputs.shape[2]]
+                error = true_states_no_history[i][1:, :] - predicted_states[:, :, :true_outputs[i].shape[-1]]
 
                 train_s.append(predicted_states[0][:-1, :])
                 train_u.append(action_delayed[0][1:, :])
