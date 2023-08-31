@@ -44,19 +44,6 @@ class ErrorGPModel(ErrorModel):
         self.scaler_x = TorchNormalizer(num_of_normalizers=self.num_actions)
         self.scaler_y = TorchNormalizer(num_of_normalizers=self.num_errors)
 
-        # Add basic regressors
-        s_def = [(0, 0)]
-        new_regressor = lambda a, s: s[0]
-        self.reg.add(new_regressor, s_defs=s_def)
-
-        s_def = [(0, 1)]
-        new_regressor = lambda a, s: s[0]
-        self.reg.add(new_regressor, s_defs=s_def)
-
-        a_def = [(0, 0)]
-        new_regressor = lambda a, s: a[0]
-        self.reg.add(new_regressor, a_defs=a_def)
-
     def forward(self,
                 regressors: Optional[torch.tensor] = None,
                 u_input: Optional[torch.tensor] = None,
