@@ -141,7 +141,6 @@ class RegressorFactory(nn.Module):
         if a_defs is not None:
             for def_ in a_defs:
                 k_history, i_action = def_
-                print(self.action_history_size)
                 if abs(k_history) >= self.action_history_size or i_action >= self.num_actions:
                     raise IndexError("Out of bound")
 

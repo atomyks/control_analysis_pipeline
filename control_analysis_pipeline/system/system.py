@@ -89,7 +89,13 @@ class System:
             raise ValueError("Input array must be of shape (BATCH x TIME x NUM_INPUTS) or (TIME x NUM_INPUTS)")
 
         if initial_state is not None:
-            state = initial_state.reshape((batch_size, self.base_model.num_states))
+            num_set_states = initial_state.shape[-1]
+            initial_state = initial_state.reshape((batch_size, num_set_states))
+            state = torch.cat((
+                initial_state,
+                torch.zeros((batch_size, self.base_model.num_states - num_set_states))),
+                dim=-1
+            )
         else:
             state = torch.zeros((batch_size, self.base_model.num_states))
 
@@ -118,7 +124,7 @@ class System:
                         use_base_model=True, use_error_model=True):
         """
         :param input_array: torch.tensor, (TIME x NUM_INPUTS)
-        :param initial_state: torch.tensor, (1 x NUM_STATES)
+        :param initial_state: torch.tensor, (1 x  NUM_OBSERVED_STATES or NUM_STATES)
         :param true_state: torch.tensor, (TIME x NUM_STATES)
         :param use_base_model:
         :param use_error_model:
@@ -337,14 +343,8 @@ class System:
                 # reset model memory
                 self.base_model.reset()
                 # set initial state
-                # initial_state = true_outputs[i, 0, 0:self.base_model.num_states]
-
-                NUM_S_TO_ADD = self.base_model.num_states - true_outputs[i].shape[-1]
-                initial_state = torch.cat((true_outputs[i][0, :].reshape((1, true_outputs[i].shape[-1])), torch.zeros((
-                    batch_size, NUM_S_TO_ADD))), dim=-1)
-
                 state_array, _, _ = self.simulate(input_array=inputs[i],
-                                                  initial_state=initial_state,
+                                                  initial_state=true_outputs[i][0:1, :],
                                                   use_base_model=True,
                                                   use_error_model=False)
 
@@ -368,7 +368,7 @@ class System:
         else:
             raise TypeError(f'require type list or torch.Tensor but is of type {type(inputs)}')
 
-        opt = optimizer(search_space, population=10000)
+        opt = optimizer(search_space, population=20000)
         if verbose:
             verbose = ["progress_bar", "print_results", "print_times"]
         opt.search(objective_function, n_iter=epochs, verbosity=verbose)

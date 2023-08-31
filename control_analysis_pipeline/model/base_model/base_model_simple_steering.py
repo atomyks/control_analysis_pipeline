@@ -41,7 +41,7 @@ class SimpleSteering(Model):
         action_delayed = self.delay_layer(action)
 
         error = -(state - action_delayed)
-        steer_rate = self.deadzone_layer(error + self.last_steer_rate) / self.time_const.get()
+        steer_rate = self.deadzone_layer(error) / self.time_const.get()  #  + self.last_steer_ratessssss
 
         steer_rate = min(max(steer_rate, -3.0), 3.0)  # limit for steering velocity
         y_output = state + steer_rate * self.dt  # Forward euler

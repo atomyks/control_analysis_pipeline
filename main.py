@@ -70,7 +70,7 @@ def main():
 
     hst = 30
 
-    sys.error_model = ErrorGPModel(num_actions=1, num_states=1, num_errors=1,
+    sys.error_model = ErrorGPModel(num_actions=1, num_states=sys.base_model.num_states, num_errors=1,
                                    action_history_size=hst*2,
                                    state_history_size=hst*2)
 
@@ -105,25 +105,22 @@ def main():
         inputs=copy.deepcopy(train_a),  # [:-1, :]
         true_outputs=copy.deepcopy(outputs_train_arr),
         optimizer=gfo.ParticleSwarmOptimizer,
-        epochs=1,
+        epochs=100,
         verbose=True)
 
-    sys.base_model.deadzone_layer.r_lambd.set(0.0012)
-    sys.base_model.deadzone_layer.l_lambd.set(-0.0020)
-    sys.base_model.deadzone_layer.sc.set(1.0)
-    sys.base_model.time_const.set(0.1901)
-    sys.base_model.steer_rate_e.set(0.0040)
-    sys.base_model.delay_layer.set_delay_val(0)
-
-    print(sys.error_model)
-    print(sys.error_model.reg)
+    # sys.base_model.deadzone_layer.r_lambd.set(0.0012)
+    # sys.base_model.deadzone_layer.l_lambd.set(-0.0020)
+    # sys.base_model.deadzone_layer.sc.set(1.0)
+    # sys.base_model.time_const.set(0.1901)
+    # sys.base_model.steer_rate_e.set(0.0040)
+    # sys.base_model.delay_layer.set_delay_val(0)
 
     # # Learn error model
-    sys.learn_error_grad(inputs=copy.deepcopy(train_a),
-                         true_outputs=copy.deepcopy(outputs_train_arr),
-                         verbose=True, epochs=800,
-                         optimizer=torch.optim.Adam,
-                         learning_rate=0.005)
+    # sys.learn_error_grad(inputs=copy.deepcopy(train_a),
+    #                      true_outputs=copy.deepcopy(outputs_train_arr),
+    #                      verbose=True, epochs=1,
+    #                      optimizer=torch.optim.Adam,
+    #                      learning_rate=0.005)
 
     fig, axs = plt.subplots(2, 2)
     print("1")
@@ -135,7 +132,7 @@ def main():
                             true_state=copy.deepcopy(outputs_train_arr[0][1:, :]),
                             initial_state=initial_state,
                             ax=axs[0][0], show_input=True, show_hidden_states=False,
-                            use_base_model=True, use_error_model=True)
+                            use_base_model=True, use_error_model=False)
 
     print("2")
     # initial_state = torch.cat((outputs_train_arr[1][0:1, :], torch.zeros((1, 1))), dim=-1)
@@ -146,7 +143,7 @@ def main():
                             true_state=copy.deepcopy(outputs_train_arr[1][1:, :]),
                             initial_state=initial_state,
                             ax=axs[0][1], show_input=True, show_hidden_states=False,
-                            use_base_model=True, use_error_model=True)
+                            use_base_model=True, use_error_model=False)
 
     print("3")
     # initial_state = torch.cat((outputs_train_arr[2][0:1, :], torch.zeros((1, 1))), dim=-1)
@@ -158,7 +155,7 @@ def main():
                             true_state=copy.deepcopy(outputs_train_arr[2][1:, :]),
                             initial_state=initial_state,
                             ax=axs[1][0], show_input=True, show_hidden_states=False,
-                            use_base_model=True, use_error_model=True)
+                            use_base_model=True, use_error_model=False)
 
     print("4")
     sys.base_model.reset()
@@ -168,7 +165,7 @@ def main():
                             true_state=copy.deepcopy(outputs_train_arr[3][1:, :]),
                             initial_state=initial_state,
                             ax=axs[1][1], show_input=True, show_hidden_states=False,
-                            use_base_model=True, use_error_model=True)
+                            use_base_model=True, use_error_model=False)
 
     handles, labels = axs[0][0].get_legend_handles_labels()
     fig.legend(handles, labels, loc='upper right')
