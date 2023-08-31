@@ -15,11 +15,11 @@ class SimpleSteering(Model):
         self.delay_layer.reset()
         self.register_model("delay_layer", self.delay_layer)
 
-        self.deadzone_layer = Deadzone(r_lb=0.0, r_ub=0.02, r_precision=0.001,
-                                       l_lb=-0.02, l_ub=0.0, l_precision=0.001)
+        self.deadzone_layer = Deadzone(r_lb=0.0, r_ub=0.002, r_precision=0.0001,
+                                       l_lb=-0.002, l_ub=0.0, l_precision=0.0001)
         self.register_model("deadzone_layer", self.deadzone_layer)
 
-        self.time_const = NongradParameter(torch.zeros((1,)), lb=0.01, ub=0.2, precision=0.05)
+        self.time_const = NongradParameter(torch.zeros((1,)), lb=0.0001, ub=0.5, precision=0.01)
         self.register_nongrad_parameter(name="time_constant", value=self.time_const)
 
         self.steer_rate_e = NongradParameter(torch.zeros((1,)), lb=0.0, ub=0.01, precision=0.001)
