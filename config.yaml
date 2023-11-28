@@ -1,7 +1,8 @@
 # Example config file
 
 in_files_dir: "/home/tomas/tier4/control_analysis_pipeline/input_files"
-out_files_dir: "/home/tomas/tier4/control_analysis_pipeline/output_files"
+save_preprocessed_files_dir: "/home/tomas/tier4/control_analysis_pipeline/preprocessed_files"
+load_preprocessed_files_dir: "/home/tomas/tier4/control_analysis_pipeline/preprocessed_files"
 
 resampling_period: 0.03 # period that should be used when resampling the data
 minimum_signal_length: 10.0
@@ -29,7 +30,7 @@ data_to_load:
     var: "vehicle_speed"
     type: "filtering"
     operator: "gt"  # gt, lt, eq, ge, le
-    val: 0.5
+    val: 2.0
 #  vel:
 #    topic: "/control/vehicle_cmd_gate/operation_mode"
 #    var: "is_autoware_control_enabled"
