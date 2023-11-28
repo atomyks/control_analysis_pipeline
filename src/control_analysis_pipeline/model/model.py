@@ -162,6 +162,9 @@ class Model(nn.Module):
         search_space = {}
         optim_params = self.gen_nongrad_params_flat()
         for name in list(optim_params.keys()):
+            # Create search space only from parameters we actually want to train
+            if not optim_params[name].trainable:
+                continue
             search_space[name] = torch.arange(optim_params[name].lb,
                                               optim_params[name].ub,
                                               optim_params[name].precision)

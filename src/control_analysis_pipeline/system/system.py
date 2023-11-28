@@ -7,6 +7,8 @@ import json
 import os
 import gradient_free_optimizers as gfo
 import copy
+from yaml import load
+from yaml import Loader
 
 
 # Enum for model selection
@@ -42,7 +44,13 @@ class System:
     def set_linear_model_matrices(self, A=None, B=None):
         self.base_model.set_model_matrices(A, B)
 
-    def parse_config(self, config):
+    def parse_config(self, config_name):
+
+        # Load config file
+        config = None
+        with open(config_name, "r") as stream:
+            config = load(stream, Loader=Loader)
+
         self.inputs = []
         self.outputs = []
 
@@ -162,7 +170,7 @@ class System:
             else:
                 label = f"Observed state: {self.outputs[i]}"
             time_axis = np.arange(0, time_length, 1) * self.sampling_period
-            ax.plot(time_axis, true_state[:, i], marker='o', label=label, markersize=10)
+            ax.plot(time_axis, true_state[:, i], marker='o', label=label, markersize=2)
 
         for i in range(self.base_model.num_states):
             # Do not show states that are not outputs
@@ -173,7 +181,7 @@ class System:
             else:
                 label = f"State: {self.outputs[i]}"
             time_axis = np.arange(0, time_length, 1) * self.sampling_period
-            ax.plot(time_axis, state_array[0, :, i], marker='.', label=label, markersize=10)
+            ax.plot(time_axis, state_array[0, :, i], marker='.', label=label, markersize=2)
         ax.grid(which="both")
         ax.minorticks_on()
 
@@ -336,7 +344,7 @@ class System:
             # init cumulative loss
             loss = 0.0
             # set model parameters
-            for param_name in list(nongrad_params_flat.keys()):
+            for param_name in list(para.keys()):
                 nongrad_params_flat[param_name].set(para[param_name])
 
             for i in range(NUM_SIGNALS):
@@ -373,7 +381,7 @@ class System:
             verbose = ["progress_bar", "print_results", "print_times"]
         opt.search(objective_function, n_iter=epochs, verbosity=verbose)
 
-        for name in list(nongrad_params_flat.keys()):
+        for name in list(opt.best_para.keys()):
             nongrad_params_flat[name].set(opt.best_para[name])
 
     def learn_error_grad(self,

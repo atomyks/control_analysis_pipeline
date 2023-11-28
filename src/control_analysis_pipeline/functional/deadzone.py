@@ -19,7 +19,7 @@ class Deadzone(Model):
         self.l_lambd = NongradParameter(torch.zeros((1,)), lb=l_lb, ub=l_ub, precision=l_precision)
         self.register_nongrad_parameter(name="l_lambd", value=self.l_lambd)
 
-        self.sc = NongradParameter(torch.zeros((1,)), lb=0.0, ub=1.01, precision=0.1)
+        self.sc = NongradParameter(torch.zeros((1,)), lb=1.0, ub=0.0, precision=0.1)
         self.register_nongrad_parameter(name="sc", value=self.sc)
 
     def forward(self, x: torch.tensor):

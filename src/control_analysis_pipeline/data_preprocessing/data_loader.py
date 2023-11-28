@@ -43,7 +43,7 @@ def get_data_structure():
     return data_structure
 
 
-def extract_data(data_to_load, file_name):
+def extract_data_mcap(data_to_load, file_name):
     # Extract required topics from the file
     extracted_data = {}
     name_dict = {}

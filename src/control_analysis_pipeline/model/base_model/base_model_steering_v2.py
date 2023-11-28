@@ -33,10 +33,10 @@ class Steeringv2(Model):
         self.Kp = NongradParameter(torch.zeros((1,)), lb=0.0, ub=100.0, precision=1.0)
         self.register_nongrad_parameter(name="Kp", value=self.Kp)
 
-        self.Ki = NongradParameter(torch.zeros((1,)), lb=0.0, ub=0.01, precision=0.001)
+        self.Ki = NongradParameter(torch.zeros((1,)), lb=0.0, ub=2.01, precision=0.5)
         self.register_nongrad_parameter(name="Ki", value=self.Ki)
 
-        self.Kd = NongradParameter(torch.zeros((1,)), lb=0.0, ub=0.05, precision=0.002)
+        self.Kd = NongradParameter(torch.zeros((1,)), lb=0.0, ub=15.05, precision=1.0)
         self.register_nongrad_parameter(name="Kd", value=self.Kd)
 
         self.J = NongradParameter(torch.zeros((1,)), lb=0.0, ub=10, precision=0.1)
@@ -66,7 +66,7 @@ class Steeringv2(Model):
         # Virtual PID regulator
         error = -(state[:, 0] - delayed_input)
         self.integral += error
-        T_in = error * self.Kp.get() + self.integral * self.Ki.get() + (self.last_error - error) * self.Kd.get()
+        T_in = error * self.Kp.get() + self.integral * self.dt * self.Ki.get() + (self.last_error - error) / self.dt * self.Kd.get()
         self.last_error = error
 
         # Virtual system
