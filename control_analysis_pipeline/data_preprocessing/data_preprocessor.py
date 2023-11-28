@@ -157,7 +157,7 @@ class DataPreprocessor:
     def save_data(self, idx: int, names: list = None):
         if names is None:
             names = list(self.loaded_data[idx].keys())
-        header = ""
+        header = "time_stamp, "
         for i, name in enumerate(names):
             if i == len(names) - 1:
                 header += f"{name}"
