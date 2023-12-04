@@ -203,8 +203,47 @@ class Model(nn.Module):
         # Loop over all non-gradient parameters and add their values to the json representation
         json_repr["nongrad_params"] = {}
         for param_key in list(self._nongrad_params.keys()):
-            json_repr["nongrad_params"][param_key] = self._nongrad_params[param_key].get().tolist()
+            param = self._nongrad_params[param_key].get()
+            if isinstance(param, int) or isinstance(param, float):
+                json_repr["nongrad_params"][param_key] = param
+            else:
+                json_repr["nongrad_params"][param_key] = param.tolist()
         json_repr["models"] = {}
         for model_key in list(self._models.keys()):
             json_repr["models"][model_key] = self._models[model_key].get_json_repr()
         return json_repr
+
+    def load_json_repr(self, json_repr):
+        '''
+        This is used to load state dict
+        '''
+        
+        if not self.__class__.__name__ == json_repr["type"]:
+            print(f"Could not load state dict: class name is different")
+            return False
+        
+        self.action_history_size = json_repr["action_history_size"]
+        self.state_history_size = json_repr["state_history_size"]
+        self.back_prop = json_repr["back_prop"]
+
+        for param_key in list(json_repr["nongrad_params"].keys()):
+            param = json_repr["nongrad_params"][param_key]
+            if isinstance(param, int) or isinstance(param, float):
+                self._nongrad_params[param_key].set(param)
+            else:
+                self._nongrad_params[param_key].set(torch.tensor(param))
+        
+        for model_key in list(json_repr["models"].keys()):
+            self._models[model_key].load_json_repr(json_repr["models"][model_key])
+
+        self.get_json_repr()
+
+    def save_params(self, path):
+        torch.save(self.get_json_repr(), path)
+
+    def load_params(self, path):
+        print(path)
+        self.load_json_repr(torch.load(path))
+
+        
+
