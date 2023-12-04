@@ -17,7 +17,7 @@ class ModelType:
     ERROR = 1
 
 
-class System:
+class ModelLearning:
     def __init__(self, loaded_data: dict = None, num_states: int = 1, num_actions: int = 1,
                  sampling_period: float = 0.01):
         if loaded_data is not None:

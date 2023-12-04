@@ -6,9 +6,9 @@ from control_analysis_pipeline.model.nongradient_parameter import NongradParamet
 from control_analysis_pipeline.model.delay_model.delay_model import InputDelayModel
 
 
-class SimpleSteeringHist(Model):
+class SimpleSteeringHyst(Model):
     def __init__(self, dt: float = 0.1):
-        super(SimpleSteeringHist, self).__init__(num_actions=1, num_states=1)
+        super(SimpleSteeringHyst, self).__init__(num_actions=1, num_states=1)
         self.batch_size = 1
 
         # Set delay layer
@@ -46,34 +46,74 @@ class SimpleSteeringHist(Model):
         self.dt = dt
 
         self.loss_fn = nn.L1Loss()
+        
+        print("TEST OK C++")
 
-    def forward(self, action: torch.tensor, state: torch.tensor):
+    def forward(self, action: torch.tensor or list, state: torch.tensor or list):
         '''
         :param action: torch.tensor, BATCH x NUM_INPUTS, system action
         :param state: torch.tensor, BATCH x NUM_STATES, system state
         :return:
         '''
 
-        action_delayed = self.delay_layer(action)
+        type_list = False
+        if isinstance(action, list):
+            type_list = True
+            action = torch.tensor(action)
+            state = torch.tensor(state)
 
+        # Simulate the delay of the input signal
+        action_delayed = self.delay_layer(action)
+        
+        # Compute the error between the required steering angle and current steering angle
         error = -(state - action_delayed)
+
+        # Compute steering rate (First order system)
         steer_rate = self.deadzone_layer(error) / self.time_const.get()
 
-        steer_rate = min(max(steer_rate, -3.0), 3.0)  # limit for steering velocity
+        # Use some saturation for the steering rate
+        steer_rate = torch.clamp(steer_rate, min=-3.0, max=3.0)  # limit for steering velocity
 
-        y_output = state + steer_rate * self.dt  # Forward euler
+        # Integrate the system
+        next_state = state + steer_rate * self.dt # Forward euler
 
-        if (abs(steer_rate) < 0.00000001):
-            self.deadzone_layer.r_lambd.set(self.r_lambd_stop.get())  # 0.0032
+        # Compute the deadzone hysteresis
+        if (abs(steer_rate) < 0.00000001): # If in the "dead zone"
+            self.deadzone_layer.r_lambd.set(self.r_lambd_stop.get())
             self.deadzone_layer.l_lambd.set(self.l_lambd_stop.get())
-        else:
-            self.deadzone_layer.r_lambd.set(self.r_lambd_move.get())  # 0.0018
+        else:  # If outside of the "dead zone"
+            self.deadzone_layer.r_lambd.set(self.r_lambd_move.get())
             self.deadzone_layer.l_lambd.set(self.l_lambd_move.get())
 
-        return y_output, action_delayed
+        if type_list:
+            return next_state.tolist(), action_delayed.tolist()
+        return next_state, action_delayed
 
-    def reset(self):
+    def reset(self): 
         self.delay_layer.reset()
 
     def set_batch_size(self, batch_size):
         self.batch_size = batch_size
+
+if __name__=="__main__":
+    model = SimpleSteeringHyst()
+
+    model.load_params("./base_model_save")
+
+    a = torch.tensor([[1.0]])
+    s = torch.tensor([[2.0]])
+    print(model(a, s))
+    print(model.forward(a, s))
+
+    print("----------")
+
+    print(f"Initial state: {s}")
+
+    s = [2.0]
+    a = [1.0]
+
+    for t in range(5):
+        s, aa_ = model(a, s)
+        print(f"Input: {a}   State: {s}   (t): {t}")
+        
+

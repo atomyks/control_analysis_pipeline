@@ -1,4 +1,4 @@
-from control_analysis_pipeline.system.system import System
+from control_analysis_pipeline.model_learning.model_learning import ModelLearning
 import torch
 import numpy as np
 import scipy.linalg
@@ -30,16 +30,12 @@ def dlqr(A, B, Q, R):
 
 
 def main():
-    config = None
     # read config file from ./configs/double_int_config.yaml
-    with open(os.path.dirname(__file__) + "/configs/double_int_config.yaml", "r") as stream:
-        config = load(stream, Loader=Loader)
-
-    sys = System()
-    sys.parse_config(config)
+    learn_model = ModelLearning()
+    learn_model.parse_config(os.path.dirname(__file__) + "/configs/double_int_config.yaml")
 
     # Double integrator system
-    sys.set_linear_model_matrices(A=torch.tensor([[0, 0.5], [-0.5, 0]]),
+    learn_model.set_linear_model_matrices(A=torch.tensor([[0, 0.5], [-0.5, 0]]),
                                   B=torch.tensor([[0], [0.1]]))
 
     # Simulate the system closed loop with LQR controller (no delay)
@@ -53,8 +49,8 @@ def main():
     with_noise = False
     Q = np.eye(2)
     R = np.eye(1)
-    K, X, eigVals = dlqr(sys.base_model.A.weight.detach().numpy(),
-                         sys.base_model.B.weight.detach().numpy(),
+    K, X, eigVals = dlqr(learn_model.base_model.A.weight.detach().numpy(),
+                         learn_model.base_model.B.weight.detach().numpy(),
                          Q, R)
     simulation_horizon = 10
     for j in range(100):
@@ -81,7 +77,7 @@ def main():
                 u = np.array([[-1.0 * np.sin(0.1 * (j + i))]])
 
             # Simulate the system
-            x = sys.base_model.A.weight.detach().numpy() @ x + sys.base_model.B.weight.detach().numpy() @ u
+            x = learn_model.base_model.A.weight.detach().numpy() @ x + learn_model.base_model.B.weight.detach().numpy() @ u
 
             if with_noise:
                 # Add noise to the state
@@ -117,13 +113,13 @@ def main():
     plt.show()
 
     # Create another system object to learn the model
-    learned_sys = System(num_actions=1, num_states=2)
+    learned_sys = ModelLearning(num_actions=1, num_states=2)
 
     # # Initialize the model matrices with the true model matrices
     # learned_sys.set_linear_model_matrices(A=sys.base_model.A.weight.detach(),
     #                                         B=sys.base_model.B.weight.detach())
 
-    learned_sys.parse_config(config)
+    learned_sys.parse_config(os.path.dirname(__file__) + "/configs/double_int_config.yaml")
 
     ## Uncomment the following lines to learn the model with fixed B-matrix
     # # Set only B-matrix to the true model matrices
@@ -144,9 +140,9 @@ def main():
     print('Time taken to learn the model: ', tock - tick)
 
     # Compare the learned model with the true model
-    print('True A: ', sys.base_model.A.weight)
+    print('True A: ', learn_model.base_model.A.weight)
     print('Learned A: ', learned_sys.base_model.A.weight)
-    print('True B: ', sys.base_model.B.weight)
+    print('True B: ', learn_model.base_model.B.weight)
     print('Learned B: ', learned_sys.base_model.B.weight)
 
     # Plot simulation results of first 25 bags of data
@@ -161,7 +157,8 @@ def main():
                                     true_state=output_arr,
                                     initial_state=initial_state,
                                     ax=ax,
-                                    use_delay=False, use_base_model=True, use_error_model=False)
+                                    use_base_model=True, use_error_model=False
+                                    )
     # top right legend
     handles, labels = ax.get_legend_handles_labels()
     fig.legend(handles, labels, loc='upper right')
@@ -176,8 +173,8 @@ def main():
 
     Q = np.eye(2)
     R = np.eye(1)
-    Kbase, _, _ = dlqr(sys.base_model.A.weight.detach().numpy(),
-                       sys.base_model.B.weight.detach().numpy(),
+    Kbase, _, _ = dlqr(learn_model.base_model.A.weight.detach().numpy(),
+                       learn_model.base_model.B.weight.detach().numpy(),
                        Q, R)
     Klearned, _, _ = dlqr(learned_sys.base_model.A.weight.detach().numpy(),
                           learned_sys.base_model.B.weight.detach().numpy(),
@@ -199,7 +196,7 @@ def main():
 
         while np.linalg.norm(xbase) > 1e-1:
             ubase = -Kbase @ xbase
-            xbase = sys.base_model.A.weight.detach().numpy() @ xbase + sys.base_model.B.weight.detach().numpy() @ ubase
+            xbase = learn_model.base_model.A.weight.detach().numpy() @ xbase + learn_model.base_model.B.weight.detach().numpy() @ ubase
 
             # Append the state and input to the input and output arrays
             input_tensor = torch.cat((input_tensor, torch.from_numpy(ubase).reshape((1, 1))), dim=0)
