@@ -43,11 +43,10 @@ class SimpleSteeringHyst(Model):
         self.deadzone_layer.r_lambd.set(self.r_lambd_move.get())
         self.deadzone_layer.l_lambd.set(self.l_lambd_move.get())
 
-        self.dt = dt
-
-        self.loss_fn = nn.L1Loss()
+        self.dt = NongradParameter(torch.zeros((1,)), trainable=False)
+        self.register_nongrad_parameter(name="dt", value=self.dt)
+        self.dt.set(dt)
         
-        print("TEST OK C++")
 
     def forward(self, action: torch.tensor or list, state: torch.tensor or list):
         '''
@@ -75,7 +74,7 @@ class SimpleSteeringHyst(Model):
         steer_rate = torch.clamp(steer_rate, min=-3.0, max=3.0)  # limit for steering velocity
 
         # Integrate the system
-        next_state = state + steer_rate * self.dt # Forward euler
+        next_state = state + steer_rate * self.dt.get() # Forward euler
 
         # Compute the deadzone hysteresis
         if (abs(steer_rate) < 0.00000001): # If in the "dead zone"
