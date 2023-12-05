@@ -237,13 +237,18 @@ class Model(nn.Module):
             self._models[model_key].load_json_repr(json_repr["models"][model_key])
 
         self.get_json_repr()
+        return True
 
     def save_params(self, path):
         torch.save(self.get_json_repr(), path)
 
     def load_params(self, path):
-        print(path)
-        self.load_json_repr(torch.load(path))
+        try:
+            param_dict = torch.load(path)
+        except:
+            print(f"Failed to load model param file {path}")
+            return False
+        return self.load_json_repr(param_dict)
 
         
 
