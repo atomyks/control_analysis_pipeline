@@ -58,8 +58,8 @@ class SimpleSteeringHyst(Model):
         type_list = False
         if isinstance(action, list):
             type_list = True
-            action = torch.tensor(action)
-            state = torch.tensor(state)
+            action = torch.tensor(action).reshape((self.batch_size, self.num_actions))
+            state = torch.tensor(state).reshape((self.batch_size, self.num_states))
 
         # Simulate the delay of the input signal
         action_delayed = self.delay_layer(action)
