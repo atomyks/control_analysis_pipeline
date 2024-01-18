@@ -4,6 +4,7 @@ import torch.nn as nn
 from control_analysis_pipeline.regressor.regressor_factory import RegressorFactory
 from control_analysis_pipeline.model.nongradient_parameter import NongradParameter
 from typing import Optional
+import os
 
 
 class Model(nn.Module):
@@ -253,6 +254,7 @@ class Model(nn.Module):
         torch.save(self.get_json_repr(), path)
 
     def load_params(self, path):
+        path = path.replace("$HOME", os.path.expanduser('~'))
         try:
             param_dict = torch.load(path)
         except:
