@@ -11,7 +11,7 @@ class Model(nn.Module):
     Base class for all models. All models should inherit from this class.
     """
 
-    def __init__(self, num_actions=1, num_states=1, action_history_size=1, state_history_size=1):
+    def __init__(self, num_actions=1, num_states=1, action_history_size=1, state_history_size=1, sig_action_names=None, sig_state_names=None):
         """
         :param num_action: int, number of inputs to the model
         :param num_states: int, number of outputs from the model
@@ -41,6 +41,16 @@ class Model(nn.Module):
         # Non-gradient parameters
         self._nongrad_params = dict[str, NongradParameter]()
         self._models = dict[str, Model]()
+
+        # Signal names of the model
+        self.sig_action_names = sig_action_names
+        self.sig_state_names = sig_state_names
+
+    def get_sig_action_names(self):
+        return self.sig_action_names
+
+    def get_sig_state_names(self):
+        return self.sig_state_names
 
     def enable_grad_learning(self, loss_function):
         """

@@ -8,7 +8,9 @@ from control_analysis_pipeline.model.delay_model.delay_model import InputDelayMo
 
 class SimpleSteeringHyst(Model):
     def __init__(self, dt: float = 0.1):
-        super(SimpleSteeringHyst, self).__init__(num_actions=1, num_states=1)
+        super(SimpleSteeringHyst, self).__init__(num_actions=1, num_states=1, 
+                                                 sig_action_names=["STEER_DES"], 
+                                                 sig_state_names=["STEER"])
         self.batch_size = 1
 
         # Set delay layer

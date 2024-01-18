@@ -15,9 +15,10 @@ class ErrorModel(Model):
 
     """
 
-    def __init__(self, num_actions=1, num_states=1, num_errors=1, action_history_size=1, state_history_size=1):
+    def __init__(self, num_actions=1, num_states=1, num_errors=1, action_history_size=1, state_history_size=1, sig_action_names=None, sig_state_names=None):
         super(ErrorModel, self).__init__(num_actions=num_actions, num_states=num_states,
-                                         action_history_size=action_history_size, state_history_size=state_history_size)
+                                         action_history_size=action_history_size, state_history_size=state_history_size, 
+                                         sig_action_names=sig_action_names, sig_state_names=sig_state_names)
         self.model_input = None
         self.model_output = None
         self.num_errors = num_errors
