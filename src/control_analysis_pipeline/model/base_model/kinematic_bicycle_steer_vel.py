@@ -24,19 +24,12 @@ class KinematicBicycleSteerVel(Model):
         self.dt.set(0.02)
         
 
-    def forward(self, action: torch.tensor or list, state: torch.tensor or list):
+    def forward(self, action: torch.tensor, state: torch.tensor):
         '''
         :param action: torch.tensor, BATCH x NUM_INPUTS, system action
         :param state: torch.tensor, BATCH x NUM_STATES, system state
         :return:
         '''
-
-        # Correct the dimensions
-        type_list = False
-        if isinstance(action, list):
-            type_list = True
-            action = torch.tensor(action)
-            state = torch.tensor(state)
 
         action = action.reshape((self.batch_size, self.num_actions))
         state = state.reshape((self.batch_size, self.num_states))
@@ -57,8 +50,6 @@ class KinematicBicycleSteerVel(Model):
         # Integrate the model
         next_state = state + f_x * self.dt.get() # Forward euler
 
-        if type_list:
-            return next_state.tolist(), action.tolist()
         return next_state, action
 
 

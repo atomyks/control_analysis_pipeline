@@ -1,5 +1,6 @@
 from control_analysis_pipeline.model.base_model.base_model_simple_steering_hysteresis import SimpleSteeringHyst
 from control_analysis_pipeline.model.error_model.error_debug_model import ErrorDebugModel
+import torch
 
 class BaseError:
 
@@ -11,9 +12,10 @@ class BaseError:
         """
         Calculate forward pass through the model and returns next_state.
         """
-        next_state, delayed_action = self.base(action, state)
+        next_state, delayed_action = self.base(torch.tensor(action), torch.tensor(state))
         next_state_error, _ = self.error(delayed_action, state)
-        return [next_state[0][0] + next_state_error[0][0]]  # next state
+        next_state_corrected = next_state + next_state_error
+        return next_state_corrected[0].tolist()  # next state
     
     def get_state_names(self):  # Required
         """

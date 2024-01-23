@@ -1,4 +1,5 @@
 from control_analysis_pipeline.model.base_model.kinematic_bicycle_steer_vel import KinematicBicycleSteerVel
+import torch
 
 class KinematicModel:
 
@@ -9,8 +10,8 @@ class KinematicModel:
         """
         Calculate forward pass through the model and returns next_state.
         """
-        next_state, action = self.kinematic_model(action, state)
-        return next_state[0]  # next state
+        next_state, action = self.kinematic_model(torch.tensor(action), torch.tensor(state))
+        return next_state[0].tolist()
     
     def get_state_names(self):  # Required
         """

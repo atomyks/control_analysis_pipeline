@@ -46,7 +46,7 @@ class ErrorDebugModel(ErrorModel):
         upper = 0.1
         cov = None
 
-        return [[output]], [[0.0]]  #, mean #, lower, upper, cov
+        return torch.tensor([[output]]), [[0.0]]  #, mean #, lower, upper, cov
 
     def init_learning(self):
         return None
