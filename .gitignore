@@ -171,3 +171,6 @@ input_files/
 
 # Ignore the saved models in examples
 control_analysis_pipeline/examples/saved_models
+d/
+preprocessed_files/
+reports/
