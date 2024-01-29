@@ -21,11 +21,12 @@ class SimpleVelocity(Model):
         # Register additional model parameters
         self.time_const = NongradParameter(torch.zeros((1,)), lb=0.05, ub=0.5, precision=0.01)
         self.register_nongrad_parameter(name="time_constant", value=self.time_const)
-        self.time_const.set(0.01)
 
         self.dt = NongradParameter(torch.zeros((1,)), trainable=False)
         self.register_nongrad_parameter(name="dt", value=self.dt)
-        self.dt.set(0.02)
+        
+        self.time_const.set(0.1)
+        self.dt.set(dt)
         
 
     def forward(self, action: torch.tensor, state: torch.tensor):

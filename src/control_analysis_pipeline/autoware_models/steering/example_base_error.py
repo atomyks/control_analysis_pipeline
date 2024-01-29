@@ -21,13 +21,13 @@ class BaseError:
         """
         Return list of string names of the model states (outputs).
         """
-        return self.base.get_sig_state_names()
+        return self.base.get_state_names()
 
     def get_action_names(self):  # Required
         """
         Return list of string names of the model actions (inputs).
         """
-        return self.base.get_sig_action_names()
+        return self.base.get_action_names()
 
     def reset(self):  # Required
         """
@@ -42,3 +42,11 @@ class BaseError:
             - path: Path to a parameter file to load by the model.
         """
         self.base.load_params(path)
+
+    def dtSet(self, dt):
+        """
+        Set dt of the model.
+        Inputs:
+            - dt: time step
+        """
+        self.base.dt.set(dt)

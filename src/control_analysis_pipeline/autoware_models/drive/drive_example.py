@@ -17,13 +17,13 @@ class DriveExample:
         """
         Return list of string names of the model states (outputs).
         """
-        return self.drive_model.get_sig_state_names()
+        return self.drive_model.get_state_names()
 
     def get_action_names(self):  # Required
         """
         Return list of string names of the model actions (inputs).
         """
-        return self.drive_model.get_sig_action_names()
+        return self.drive_model.get_action_names()
 
     def reset(self):  # Required
         """
@@ -38,3 +38,11 @@ class DriveExample:
             - path: Path to a parameter file to load by the model.
         """
         pass
+
+    def dtSet(self, dt):
+        """
+        Set dt of the model.
+        Inputs:
+            - dt: time step
+        """
+        self.drive_model.dt.set(dt)

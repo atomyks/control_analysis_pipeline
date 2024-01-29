@@ -47,10 +47,10 @@ class Model(nn.Module):
         self.sig_action_names = sig_action_names
         self.sig_state_names = sig_state_names
 
-    def get_sig_action_names(self):
+    def get_action_names(self):
         return self.sig_action_names
 
-    def get_sig_state_names(self):
+    def get_state_names(self):
         return self.sig_state_names
 
     def enable_grad_learning(self, loss_function):

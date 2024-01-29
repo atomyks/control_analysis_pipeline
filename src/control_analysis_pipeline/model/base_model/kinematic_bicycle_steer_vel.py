@@ -17,11 +17,13 @@ class KinematicBicycleSteerVel(Model):
 
         self.wheelbase = NongradParameter(torch.zeros((1,)), trainable=False)
         self.register_nongrad_parameter(name="wheelbase", value=self.wheelbase)
-        self.wheelbase.set(2.74)
 
         self.dt = NongradParameter(torch.zeros((1,)), trainable=False)
         self.register_nongrad_parameter(name="dt", value=self.dt)
-        self.dt.set(0.02)
+
+        # default values
+        self.dt.set(dt)
+        self.wheelbase.set(2.74)
         
 
     def forward(self, action: torch.tensor, state: torch.tensor):
