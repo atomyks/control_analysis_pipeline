@@ -13,6 +13,8 @@ def sync_signal_sample_rates(signals: list, sampling_time: float, rm_time_offset
         np.array([t, y1, y2, ..., yN])
     """
     # TODO remove "interpolation" for bool values
+    
+    # get start and end time value
     start_time = -np.infty
     end_time = np.infty
     for signal in signals:
@@ -35,7 +37,7 @@ def sync_signal_sample_rates(signals: list, sampling_time: float, rm_time_offset
         signal_time = signal[0]
         signal_data = signal[1]
         while True:
-            if signal_time[original_index] > current_time:
+            if original_index + 1 >= len(signal_time) or signal_time[original_index] >= current_time:  # TODO bug here
                 new_y = np.interp(
                     current_time,
                     [signal_time[original_index - 1], signal_time[original_index]],

@@ -12,7 +12,7 @@ class KinematicModel:
         """
         next_state, action = self.kinematic_model(torch.tensor(action), torch.tensor(state))
         return next_state[0].tolist()
-    
+
     def get_state_names(self):  # Required
         """
         Return list of string names of the model states (outputs).

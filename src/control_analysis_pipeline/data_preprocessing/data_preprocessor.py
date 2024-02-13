@@ -65,7 +65,14 @@ class DataPreprocessor:
             # self.plot_all_data(["speed_filter"])
             self.filter_data()
             # self.plot_all_data(["steer_status", "steer_cmd", "speed_filter"])
-            self.save_all_data(["steer_status", "steer_cmd"])  # TODO do not save filters
+            data_to_save = []
+            for sig in self.data_to_load:
+                if 'save' in list(self.data_to_load[sig].keys()):
+                    if self.data_to_load[sig]['save']:
+                        data_to_save.append(sig)
+            self.save_all_data(data_to_save)
+            self.plot_all_data(["speed_status", "speed_cmd"])
+            # self.save_all_data(["steer_status", "steer_cmd"])
             # self.plot_all_data(["speed_filter"])
 
             data = self.get_preprocessed_data()
@@ -194,7 +201,7 @@ class DataPreprocessor:
                     temp_dict[key] = get_data_structure()
                     temp_dict[key]["data"] = res_arr[k][j]
                     temp_dict[key]["time_stamp"] = np.arange(0.0, res_arr[k][j].shape[0] * self.resampling_period,
-                                                             self.resampling_period)
+                                                             self.resampling_period)[:len(res_arr[k][j])]
 
                 filtered_data_arr.append(temp_dict)
 

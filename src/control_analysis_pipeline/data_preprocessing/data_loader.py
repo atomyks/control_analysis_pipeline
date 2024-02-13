@@ -49,12 +49,19 @@ def extract_data_mcap(data_to_load, file_name):
     name_dict = {}
 
     for signal in list(data_to_load.keys()):
-        if data_to_load[signal]["topic"] == "":
-            continue
-        if not data_to_load[signal]["topic"] in list(name_dict.keys()):
-            name_dict[data_to_load[signal]["topic"]] = {}
 
-        name_dict[data_to_load[signal]["topic"]][data_to_load[signal]["var"]] = signal
+        signal_topic = data_to_load[signal]["topic"]
+        signal_var = data_to_load[signal]["var"]
+
+        # check if the signal topic exists
+        if signal_topic == "":
+            continue
+
+        if not signal_topic in list(name_dict.keys()):
+            name_dict[signal_topic] = {}
+            name_dict[signal_topic][signal_var] = [signal]
+        else:
+            name_dict[signal_topic][signal_var].append(signal)
 
         extracted_data[signal] = get_data_structure()
 
@@ -66,8 +73,9 @@ def extract_data_mcap(data_to_load, file_name):
             val = msg
             for attr in val_name_split:
                 val = getattr(val, attr)
-            extracted_data[name_dict[topic][val_name]]["data"].append(val)
-            extracted_data[name_dict[topic][val_name]]["time_stamp"].append(timestamp / 1000000000.0)  # Convert to [s]
+            for i in range(len(name_dict[topic][val_name])):
+                extracted_data[name_dict[topic][val_name][i]]["data"].append(val)
+                extracted_data[name_dict[topic][val_name][i]]["time_stamp"].append(timestamp / 1000000000.0)  # Convert to [s]
 
     for signal_name in list(data_to_load.keys()):
         if len(extracted_data[signal_name]["data"]) == 0:
