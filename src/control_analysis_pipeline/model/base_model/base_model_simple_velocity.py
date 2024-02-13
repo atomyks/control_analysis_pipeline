@@ -15,6 +15,7 @@ class SimpleVelocity(Model):
 
         # Set delay layer
         self.delay_layer = InputDelayModel(num_actions=1)
+        self.delay_layer.delay_parm.set(4)
         self.delay_layer.reset()
         self.register_model("delay_layer", self.delay_layer)
 
@@ -24,10 +25,10 @@ class SimpleVelocity(Model):
 
         self.dt = NongradParameter(torch.zeros((1,)), trainable=False)
         self.register_nongrad_parameter(name="dt", value=self.dt)
-        
+
         self.time_const.set(0.1)
         self.dt.set(dt)
-        
+
 
     def forward(self, action: torch.tensor, state: torch.tensor):
         '''
