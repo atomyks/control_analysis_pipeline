@@ -5,6 +5,9 @@ class DriveExample:
 
     def __init__(self) -> None:
         self.drive_model = SimpleVelocity()
+        self.drive_model.delay_layer.delay_parm.set(4)
+        self.drive_model.time_const.set(0.1)
+        self.drive_model.reset()
 
     def forward(self, action, state):  # Required
         """
