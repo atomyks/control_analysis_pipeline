@@ -1,0 +1,36 @@
+# Example config file
+
+in_files_dir: "/home/tomas/tier4/control_analysis_pipeline/input_files"
+save_preprocessed_files_dir: "/home/tomas/tier4/control_analysis_pipeline/preprocessed_files_drive"
+load_preprocessed_files_dir: "/home/tomas/tier4/control_analysis_pipeline/preprocessed_files_drive"
+
+resampling_period: 0.025 # period that should be used when resampling the data
+minimum_signal_length: 10.0
+discard_after_enable: 2.0
+
+data_to_load:
+  speed_status:
+    topic: "/pacmod/vehicle_speed_rpt"
+    var: "vehicle_speed"
+    type: "output"
+    save: true
+  speed_cmd:
+    topic: "/control/command/control_cmd"
+    var: "longitudinal.speed"
+    type: "input"
+    save: true
+  pacmode_enabled:
+    topic: "/pacmod/enabled"
+    var: "data"
+    type: "enable"
+  aw_enabled:
+    topic: "/control/vehicle_cmd_gate/operation_mode"
+    var: "is_autoware_control_enabled"
+    type: "enable"
+  speed_filter:
+    topic: "/pacmod/vehicle_speed_rpt"
+    var: "vehicle_speed"
+    type: "filtering"
+    operator: "gt"  # gt, lt, eq, ge, le
+    val: 1.0
+
