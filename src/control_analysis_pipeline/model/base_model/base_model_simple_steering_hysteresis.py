@@ -48,7 +48,9 @@ class SimpleSteeringHyst(Model):
         self.dt = NongradParameter(torch.zeros((1,)), trainable=False)
         self.register_nongrad_parameter(name="dt", value=self.dt)
         self.dt.set(dt)
-        
+
+        self.loss_fn = nn.L1Loss()
+
 
     def forward(self, action: torch.tensor, state: torch.tensor):
         '''
