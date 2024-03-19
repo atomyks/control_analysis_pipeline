@@ -60,7 +60,7 @@ class Drive_V1(Model):
         acceleration = error / self.time_const.get()
 
         # Limit acceleration
-        acceleration = torch.clamp(acceleration, min=-10.0, max=self.max_acceleration.get())
+        acceleration = torch.clamp(acceleration, min=torch.tensor(-10.0), max=self.max_acceleration.get())
 
         # Integrate the system
         next_state = state + acceleration * self.dt.get() # Forward euler
